@@ -2,6 +2,39 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { AuthState } from '@/types';
 
 // ===== Client Axios avec intercepteur JWT + auto-refresh =====
+//
+// Architecture des interceptors Axios :
+// ┌──────────────────────────────────────────────────────────────┐
+// │                    Requête (Request)                         │
+// │                                                              │
+// │  Component → api.get('/tasks')                               │
+// │       │                                                      │
+// │       ▼                                                      │
+// │  ┌──────────────────────────────────┐                        │
+// │  │  Request Interceptor             │                        │
+// │  │  1. Lit le token localStorage    │                        │
+// │  │  2. Injecte Authorization header │                        │
+// │  │     Authorization: Bearer <JWT>  │                        │
+// │  └──────────────────────────────────┘                        │
+// │       │                                                      │
+// │       ▼                                                      │
+// │  ┌──────────────────────────────────┐                        │
+// │  │  Backend (localhost:8080)        │                        │
+// │  │  via Next.js rewrite proxy       │                        │
+// │  └──────────────────────────────────┘                        │
+// │       │                                                      │
+// │       ▼                                                      │
+// │  ┌──────────────────────────────────┐                        │
+// │  │  Response Interceptor            │                        │
+// │  │  - 200 OK → passe la réponse    │                        │
+// │  │  - 401 → lance le refresh token │                        │
+// │  │    ┌─────────────────────────┐   │                        │
+// │  │    │ Queue de requêtes      │   │                        │
+// │  │    │ en attente pendant     │   │                        │
+// │  │    │ le refresh             │   │                        │
+// │  │    └─────────────────────────┘   │                        │
+// │  └──────────────────────────────────┘                        │
+// └──────────────────────────────────────────────────────────────┘
 
 const api = axios.create({
   baseURL: '/api/v1', // Proxied via Next.js rewrites → localhost:8080
@@ -51,6 +84,24 @@ api.interceptors.request.use(
 );
 
 // ===== Intercepteur réponse : auto-refresh si 401 =====
+//
+// Schéma de gestion du refresh token avec queue :
+// ┌───────────────────────────────────────────────────────┐
+// │  Requête 1 → 401                                      │
+// │  ┌─────────────────────────────────┐                  │
+// │  │  isRefreshing = true            │                  │
+// │  │  refreshCallback() → new token  │                  │
+// │  │                                 │                  │
+// │  │  Pendant ce temps :             │                  │
+// │  │  Requête 2 → 401 → queue.push() │                  │
+// │  │  Requête 3 → 401 → queue.push() │                  │
+// │  │                                 │                  │
+// │  │  Après refresh :                │                  │
+// │  │  processQueue() → rejoue 2 et 3 │                  │
+// │  │  isRefreshing = false            │                  │
+// │  └─────────────────────────────────┘                  │
+// └───────────────────────────────────────────────────────┘
+
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;

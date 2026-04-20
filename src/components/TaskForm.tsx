@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import { TaskCreateRequest, TaskUpdateRequest } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 interface TaskFormProps {
   mode: 'create' | 'edit';
@@ -40,10 +45,6 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
         dueDate: dueDate || undefined,
       };
 
-      if (mode === 'create') {
-        (data as TaskCreateRequest).title = title.trim();
-      }
-
       await onSubmit(data);
       if (mode === 'create') {
         setTitle('');
@@ -52,29 +53,30 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
         setDueDate('');
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      setError(axiosErr?.response?.data?.message || 'Erreur lors de la sauvegarde');
+      const message = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
+      setError(message);
     }
   };
 
   const priorities = [
-    { value: 'LOW', label: 'Basse', color: 'bg-slate-100 text-slate-600' },
-    { value: 'MEDIUM', label: 'Moyenne', color: 'bg-yellow-100 text-yellow-700' },
-    { value: 'HIGH', label: 'Haute', color: 'bg-orange-100 text-orange-700' },
-    { value: 'CRITICAL', label: 'Critique', color: 'bg-red-100 text-red-700' },
+    { value: 'LOW', label: 'Basse', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+    { value: 'MEDIUM', label: 'Moyenne', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+    { value: 'HIGH', label: 'Haute', className: 'bg-orange-100 text-orange-700 border-orange-200' },
+    { value: 'CRITICAL', label: 'Critique', className: 'bg-red-100 text-red-700 border-red-200' },
   ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="task-title">Titre *</Label>
+        <Input
+          id="task-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -82,24 +84,24 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
           minLength={3}
           maxLength={255}
           placeholder="Titre de la tâche"
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm"
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea
+      <div className="space-y-2">
+        <Label htmlFor="task-desc">Description</Label>
+        <Textarea
+          id="task-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={5000}
           rows={3}
           placeholder="Description détaillée (optionnel)"
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm resize-none"
+          className="resize-none"
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Priorité</label>
+      <div className="space-y-2">
+        <Label>Priorité</Label>
         <div className="flex gap-2 flex-wrap">
           {priorities.map((p) => (
             <button
@@ -108,8 +110,8 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
               onClick={() => setPriority(p.value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                 priority === p.value
-                  ? `${p.color} border-current ring-2 ring-offset-1 ring-gray-300`
-                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                  ? `${p.className} ring-2 ring-ring ring-offset-2`
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
               }`}
             >
               {p.label}
@@ -118,32 +120,30 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Date d&apos;échéance</label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="task-date">Date d&apos;échéance</Label>
+        <Input
+          id="task-date"
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm"
         />
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="flex-1 bg-emerald-600 text-white py-2.5 px-4 rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm disabled:opacity-50"
-        >
-          {isLoading ? 'Enregistrement...' : mode === 'create' ? 'Créer la tâche' : 'Mettre à jour'}
-        </button>
+        <Button type="submit" disabled={isLoading} className="flex-1">
+          {isLoading ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enregistrement...</>
+          ) : mode === 'create' ? (
+            'Créer la tâche'
+          ) : (
+            'Mettre à jour'
+          )}
+        </Button>
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             Annuler
-          </button>
+          </Button>
         )}
       </div>
     </form>

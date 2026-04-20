@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { KeyRound } from 'lucide-react';
 
 interface TokenTimerProps {
   expiry: number | null;
 }
 
-export default function TokenTimer({ expiry }: TokenTimerProps) {
+function TokenTimerInner({ expiry }: TokenTimerProps) {
   const [remaining, setRemaining] = useState<string>('');
 
   useEffect(() => {
@@ -35,17 +37,21 @@ export default function TokenTimer({ expiry }: TokenTimerProps) {
   const isLow = !isExpired && remaining !== '--:--' && parseInt(remaining.split(':')[0]) < 5;
 
   return (
-    <div
-      className={`text-xs font-mono px-2 py-1 rounded-md ${
-        isExpired
-          ? 'bg-red-100 text-red-700'
-          : isLow
-          ? 'bg-yellow-100 text-yellow-700'
-          : 'bg-gray-100 text-gray-600'
+    <Badge
+      variant={isExpired ? 'destructive' : isLow ? 'outline' : 'secondary'}
+      className={`font-mono text-xs gap-1 ${
+        isExpired ? 'bg-red-100 text-red-700 border-red-200' :
+        isLow ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+        'bg-muted text-muted-foreground'
       }`}
       title="Temps restant du token d'accès"
     >
-      🔑 {remaining}
-    </div>
+      <KeyRound className="h-3 w-3" />
+      {remaining}
+    </Badge>
   );
 }
+
+const TokenTimer = memo(TokenTimerInner);
+TokenTimer.displayName = 'TokenTimer';
+export default TokenTimer;
