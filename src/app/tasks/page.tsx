@@ -1,128 +1,107 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { getMyTasks, createTask, updateTaskStatus, deleteTask } from '@/hooks/useTasks';
-import { TaskResponse, TaskCreateRequest, TaskPageResponse } from '@/types';
+import {
+  useMyTasksQuery,
+  useCreateTaskMutation,
+  useUpdateTaskStatusMutation,
+  useDeleteTaskMutation,
+} from '@/hooks/useTasks';
+import { TaskCreateRequest, TaskUpdateRequest } from '@/types';
 import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Plus, X, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<TaskResponse[]>([]);
-  const [pageInfo, setPageInfo] = useState({ totalElements: 0, totalPages: 0, number: 0, size: 20 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const { data: taskPage, isLoading } = useMyTasksQuery(currentPage, 20);
+  const createMutation = useCreateTaskMutation();
+  const updateStatusMutation = useUpdateTaskStatusMutation();
+  const deleteMutation = useDeleteTaskMutation();
+
+  const tasks = taskPage?.content ?? [];
+  const totalPages = taskPage?.totalPages ?? 0;
+  const totalElements = taskPage?.totalElements ?? 0;
+
   const router = useRouter();
 
-  const loadTasks = useCallback(async (page: number = 0) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data: TaskPageResponse = await getMyTasks(page, 20);
-      setTasks(data.content);
-      setPageInfo({
-        totalElements: data.totalElements,
-        totalPages: data.totalPages,
-        number: data.number,
-        size: data.size,
-      });
-      setCurrentPage(data.number);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number } };
-      if (axiosErr?.response?.status === 401) return;
-      setError('Erreur lors du chargement des tâches');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
-
-  const handleCreate = async (data: TaskCreateRequest) => {
-    setIsCreating(true);
-    try {
-      await createTask(data as TaskCreateRequest);
-      setShowCreateForm(false);
-      await loadTasks(0);
-    } finally {
-      setIsCreating(false);
-    }
+  const handleCreate = async (data: TaskCreateRequest | TaskUpdateRequest) => {
+    await createMutation.mutateAsync(data as TaskCreateRequest);
+    setShowCreateForm(false);
+    setCurrentPage(0);
   };
 
   const handleStatusChange = async (id: string, status: string) => {
-    try {
-      await updateTaskStatus(id, status);
-      await loadTasks(currentPage);
-    } catch {
-      setError('Erreur lors du changement de statut');
-    }
+    await updateStatusMutation.mutateAsync({ id, status });
   };
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    setIsDeleting(true);
-    try {
-      await deleteTask(deleteId);
-      setDeleteId(null);
-      await loadTasks(currentPage);
-    } catch {
-      setError('Erreur lors de la suppression');
-    } finally {
-      setIsDeleting(false);
-    }
+    await deleteMutation.mutateAsync(deleteId);
+    setDeleteId(null);
   };
 
   return (
     <AppLayout>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mes Tâches</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {pageInfo.totalElements} tâche{pageInfo.totalElements !== 1 ? 's' : ''}
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <ClipboardList className="h-6 w-6 text-primary" />
+            Mes Tâches
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {totalElements} tâche{totalElements !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium shadow-sm"
+          variant={showCreateForm ? 'outline' : 'default'}
+          size="sm"
         >
-          {showCreateForm ? '✕ Annuler' : '+ Nouvelle tâche'}
-        </button>
+          {showCreateForm ? <><X className="h-4 w-4 mr-1" /> Annuler</> : <><Plus className="h-4 w-4 mr-1" /> Nouvelle tâche</>}
+        </Button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-          {error}
-        </div>
-      )}
-
-      {/* Create Form */}
       {showCreateForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Nouvelle tâche</h2>
-          <TaskForm mode="create" onSubmit={handleCreate} isLoading={isCreating} />
+        <div className="bg-card rounded-xl border shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Nouvelle tâche</h2>
+          <TaskForm mode="create" onSubmit={handleCreate} isLoading={createMutation.isPending} />
         </div>
       )}
 
-      {/* Task List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border shadow-sm p-5 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+              <div className="flex items-center justify-between pt-3 border-t">
+                <Skeleton className="h-4 w-20" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-20 rounded-md" />
+                  <Skeleton className="h-6 w-20 rounded-md" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : tasks.length === 0 ? (
         <div className="text-center py-16">
-          <div className="text-5xl mb-4">📋</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune tâche</h3>
-          <p className="text-sm text-gray-500">Créez votre première tâche pour commencer !</p>
+          <ClipboardList className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+          <h3 className="text-lg font-medium text-foreground mb-2">Aucune tâche</h3>
+          <p className="text-sm text-muted-foreground">Créez votre première tâche pour commencer !</p>
         </div>
       ) : (
         <>
@@ -138,32 +117,24 @@ export default function TasksPage() {
             ))}
           </div>
 
-          {/* Pagination */}
-          {pageInfo.totalPages > 1 && (
+          {totalPages > 1 && (
             <div className="flex justify-center items-center gap-2 mt-8">
-              <button
-                onClick={() => loadTasks(currentPage - 1)}
-                disabled={currentPage === 0}
-                className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0}>
+                <ChevronLeft className="h-4 w-4 mr-1" />
                 Précédent
-              </button>
-              <span className="text-sm text-gray-500">
-                Page {currentPage + 1} / {pageInfo.totalPages}
+              </Button>
+              <span className="text-sm text-muted-foreground px-3">
+                Page {currentPage + 1} / {totalPages}
               </span>
-              <button
-                onClick={() => loadTasks(currentPage + 1)}
-                disabled={currentPage >= pageInfo.totalPages - 1}
-                className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages - 1}>
                 Suivant
-              </button>
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           )}
         </>
       )}
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={!!deleteId}
         title="Supprimer la tâche"
@@ -171,7 +142,7 @@ export default function TasksPage() {
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
-        isLoading={isDeleting}
+        isLoading={deleteMutation.isPending}
       />
     </AppLayout>
   );

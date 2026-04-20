@@ -2,12 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import api, { setRefreshCallback, setTokenUpdateCallback } from '@/lib/api';
-import {
-  AuthState,
-  LoginRequest,
-  LoginResponse,
-} from '@/types';
+import { isApiError } from '@/types';
+import { AuthState, LoginRequest, LoginResponse } from '@/types';
 
 interface AuthContextType {
   auth: AuthState;
@@ -42,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // ===== Chargement initial du state depuis localStorage =====
   useEffect(() => {
     try {
       const stored = localStorage.getItem('tasksphere_auth');
@@ -61,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ===== Persister le state dans localStorage =====
   const updateAuth = useCallback((newAuth: AuthState) => {
     setAuth(newAuth);
     if (newAuth.isAuthenticated) {
@@ -71,7 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ===== Configurer les callbacks pour l'intercepteur Axios =====
+  const clearQueryCache = useCallback(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('auth-change', { detail: { clearCache: true } }));
+    } catch {
+      // Ignore
+    }
+  }, []);
+
   useEffect(() => {
     setRefreshCallback(async () => {
       try {
@@ -109,7 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [updateAuth]);
 
-  // ===== Login =====
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
@@ -120,7 +122,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       } satisfies LoginRequest);
 
-      // Décoder le JWT pour extraire email et role
       let emailFromToken = email;
       let roleFromToken = 'USER';
 
@@ -129,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailFromToken = payload.sub || email;
         roleFromToken = payload.role || 'USER';
       } catch {
-        // Si le décodage échoue, on garde les valeurs par défaut
+        // JWT decode failed, keep defaults
       }
 
       const newAuth: AuthState = {
@@ -141,19 +142,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokenExpiry: Date.now() + parseInt(response.data.expiresIn) * 1000,
       };
 
+      clearQueryCache();
       updateAuth(newAuth);
+      toast.success(`Bienvenue, ${emailFromToken} !`, {
+        description: `Connecté en tant que ${roleFromToken}`,
+      });
       router.push('/tasks');
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string }; status?: number } };
-      const message = axiosErr?.response?.data?.error || 'Erreur de connexion au serveur';
+      const message = isApiError(err)
+        ? err.response.data.error || err.response.data.message || 'Erreur serveur'
+        : 'Erreur de connexion au serveur';
       setError(message);
+      toast.error('Échec de la connexion', { description: message });
       throw new Error(message);
     } finally {
       setIsLoading(false);
     }
-  }, [router, updateAuth]);
+  }, [router, updateAuth, clearQueryCache]);
 
-  // ===== Logout =====
   const logout = useCallback(async () => {
     try {
       if (auth.refreshToken) {
@@ -162,14 +168,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch {
-      // Même si le logout échoue côté serveur, on clear côté client
+      // Even if server logout fails, clear client state
     } finally {
+      clearQueryCache();
       updateAuth(defaultAuth);
+      toast.info('Déconnecté', { description: 'À bientôt !' });
       router.push('/');
     }
-  }, [auth.refreshToken, router, updateAuth]);
+  }, [auth.refreshToken, router, updateAuth, clearQueryCache]);
 
-  // ===== Clear error =====
   const clearError = useCallback(() => setError(null), []);
 
   return (

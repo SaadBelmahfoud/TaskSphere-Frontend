@@ -66,8 +66,29 @@ export interface AuthState {
   tokenExpiry: number | null;
 }
 
-export interface ApiError {
+// ===== Interface d'erreur API standardisée =====
+// Représente la structure des réponses d'erreur du GlobalExceptionHandler backend.
+
+export interface ApiErrorResponse {
   error?: string;
   message?: string;
   status: number;
+  details?: string;
+  path?: string;
+}
+
+// ===== Type Guard isApiError (Correction B1/B2) =====
+// Avant : const err = error as { response?: { data?: { message?: string } } };
+// Après : if (isApiError(error)) { ... } — type-safe à l'exécution
+
+export function isApiError(error: unknown): error is { response: { data: ApiErrorResponse; status: number } } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as any).response === 'object' &&
+    (error as any).response !== null &&
+    'data' in (error as any).response &&
+    typeof (error as any).response.data === 'object'
+  );
 }
