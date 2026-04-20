@@ -10,12 +10,16 @@ import {
   useUpdateTaskMutation,
   useUpdateTaskStatusMutation,
   useDeleteTaskMutation,
+  useAssignTaskMutation,
 } from '@/hooks/useTasks';
 import { TaskUpdateRequest } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Pencil, Trash2, UserPlus, UserX } from 'lucide-react';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string; label: string }> = {
   TODO: { variant: 'secondary', className: 'bg-gray-100 text-gray-700 border-gray-200', label: 'À faire' },
@@ -37,11 +41,13 @@ export default function TaskDetailPage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [assigneeEmail, setAssigneeEmail] = useState('');
 
   const { data: task, isLoading, error, isError } = useTaskQuery(id);
   const updateMutation = useUpdateTaskMutation(id);
   const updateStatusMutation = useUpdateTaskStatusMutation();
   const deleteMutation = useDeleteTaskMutation();
+  const assignMutation = useAssignTaskMutation();
 
   const handleUpdate = async (data: TaskUpdateRequest) => {
     await updateMutation.mutateAsync(data);
@@ -56,6 +62,56 @@ export default function TaskDetailPage() {
     await deleteMutation.mutateAsync(id);
     router.push('/tasks');
   };
+
+  /**
+   * CORRECTION — Fonctionnalité d'assignation de tâche
+   *
+   * RBAC : Seuls ADMIN et MANAGER peuvent assigner des tâches.
+   * Le bouton d'assignation n'est visible que pour ces rôles.
+   *
+   * FLUX :
+   * 1. Saisir l'email de l'assignataire
+   * 2. Cliquer "Assigner" → PATCH /tasks/{id}/assign { assigneeId: "email" }
+   * 3. Le backend vérifie les permissions et l'existence de l'utilisateur
+   * 4. Pour désassigner : cliquer "Retirer" avec un champ vide
+   */
+  const handleAssign = async () => {
+    if (!assigneeEmail.trim()) {
+      toast.error("Veuillez saisir l'email de l'assignataire");
+      return;
+    }
+    try {
+      await assignMutation.mutateAsync({ id, assigneeId: assigneeEmail.trim() });
+      setAssigneeEmail('');
+      toast.success('Tâche assignée avec succès');
+    } catch {
+      toast.error("Impossible d'assigner la tâche", {
+        description: "Vérifiez que l'email est correct et que l'utilisateur existe",
+      });
+    }
+  };
+
+  const handleUnassign = async () => {
+    try {
+      await assignMutation.mutateAsync({ id, assigneeId: '' });
+      toast.success('Assignation retirée');
+    } catch {
+      toast.error("Impossible de retirer l'assignation");
+    }
+  };
+
+  // Vérifie si l'utilisateur courant est ADMIN ou MANAGER
+  // On lit depuis localStorage car le rôle est stocké dans le state d'auth
+  const currentUserRole = typeof window !== 'undefined'
+    ? (() => {
+        try {
+          const stored = localStorage.getItem('tasksphere_auth');
+          if (!stored) return 'USER';
+          return JSON.parse(stored).role || 'USER';
+        } catch { return 'USER'; }
+      })()
+    : 'USER';
+  const canAssign = currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER';
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
@@ -221,6 +277,7 @@ export default function TaskDetailPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Détails */}
           <div className="bg-card rounded-xl border shadow-sm p-6">
             <h2 className="text-sm font-medium text-muted-foreground mb-4">Détails</h2>
             <dl className="space-y-3 text-sm">
@@ -231,6 +288,16 @@ export default function TaskDetailPage() {
               <div>
                 <dt className="text-muted-foreground">Propriétaire (userId)</dt>
                 <dd className="text-foreground font-mono text-xs mt-0.5 break-all">{task.userId}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Assignataire</dt>
+                <dd className="text-foreground mt-0.5">
+                  {task.assigneeId ? (
+                    <Badge variant="secondary">{task.assigneeId}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground italic">Non assignée</span>
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Créée le</dt>
@@ -257,6 +324,54 @@ export default function TaskDetailPage() {
             </dl>
           </div>
 
+          {/* CORRECTION — Section d'assignation (ADMIN/MANAGER uniquement) */}
+          {canAssign && (
+            <div className="bg-card rounded-xl border shadow-sm p-6">
+              <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
+                <UserPlus className="h-4 w-4" />
+                Assignation
+              </h2>
+              <p className="text-xs text-muted-foreground mb-3">
+                {task.assigneeId
+                  ? `Cette tâche est assignée à ${task.assigneeId}`
+                  : 'Cette tâche n\'est assignée à personne'}
+              </p>
+
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="email@tasksphere.com"
+                  value={assigneeEmail}
+                  onChange={(e) => setAssigneeEmail(e.target.value)}
+                  className="h-9 text-sm"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAssign}
+                  disabled={assignMutation.isPending || !assigneeEmail.trim()}
+                  className="shrink-0"
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                  Assigner
+                </Button>
+              </div>
+
+              {task.assigneeId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUnassign}
+                  disabled={assignMutation.isPending}
+                  className="w-full mt-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  <UserX className="h-3.5 w-3.5 mr-1" />
+                  Retirer l&apos;assignation
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Zone de danger */}
           <div className="bg-card rounded-xl border border-destructive/50 shadow-sm p-6">
             <h2 className="text-sm font-medium text-destructive mb-2">Zone de danger</h2>
             <p className="text-xs text-muted-foreground mb-3">La suppression est irréversible (soft delete).</p>

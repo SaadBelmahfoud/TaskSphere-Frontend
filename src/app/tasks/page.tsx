@@ -20,10 +20,21 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, ChevronLeft, ChevronRight, ClipboardList, Search, RotateCcw, SlidersHorizontal } from 'lucide-react';
 
+/*
+ * CORRECTION — Noms des champs de tri (snake_case → camelCase)
+ * ────────────────────────────────────────────────────────────
+ * PROBLÈME AVANT : Les valeurs 'created_at' et 'due_date' sont en snake_case.
+ * Le backend Spring Data JPA attend les noms exacts des champs de l'entité
+ * TaskEntity (camelCase Java : createdAt, dueDate, title, priority).
+ * Sort.by(direction, "created_at") lève une PropertyReferenceException car
+ * aucun champ "created_at" n'existe dans TaskEntity.
+ *
+ * SOLUTION : Utiliser les noms de champs JPA en camelCase.
+ */
 const sortOptions = [
-  { value: 'created_at', label: 'Date de création' },
+  { value: 'createdAt', label: 'Date de création' },
   { value: 'priority', label: 'Priorité' },
-  { value: 'due_date', label: 'Date d\'échéance' },
+  { value: 'dueDate', label: 'Date d\'échéance' },
   { value: 'title', label: 'Titre' },
 ] as const;
 
@@ -39,7 +50,7 @@ export default function TasksPage() {
     priority: '',
     dueDateFrom: '',
     dueDateTo: '',
-    sortBy: 'created_at',
+    sortBy: 'createdAt',
     sortDir: 'desc',
   });
 
@@ -72,7 +83,7 @@ export default function TasksPage() {
       priority: '',
       dueDateFrom: '',
       dueDateTo: '',
-      sortBy: 'created_at',
+      sortBy: 'createdAt',
       sortDir: 'desc',
     });
     setCurrentPage(0);

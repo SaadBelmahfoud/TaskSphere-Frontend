@@ -17,6 +17,7 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -117,7 +118,7 @@ function DragOverlayCard({ task }: { task: { id: string; title: string; priority
   );
 }
 
-// ===== Composant colonne =====
+// ===== Composant colonne DROPPABLE =====
 interface ColumnProps {
   status: ColumnStatus;
   tasks: {
@@ -128,13 +129,46 @@ interface ColumnProps {
   }[];
 }
 
+/**
+ * CORRECTION KANBAN — useDroppable sur chaque colonne
+ *
+ * PROBLÈME AVANT :
+ *   Les colonnes n'avaient pas de "drop zone". Quand on déposait une carte
+ *   sur une colonne vide (sans tâches), l'événement "over" retournait null
+ *   car il n'y avait aucun élément avec lequel faire une collision.
+ *   Résultat : la carte revenait à sa position initiale.
+ *
+ * SOLUTION :
+ *   Chaque colonne utilise useDroppable() avec un ID comme "column-TODO",
+ *   "column-DOING", "column-DONE". Cela enregistre la colonne comme une
+ *   zone de dépôt dans le DndContext, même si elle est vide.
+ *
+ * PRINCIPE useDroppable :
+ *   useDroppable({ id: "column-TODO" }) retourne :
+ *   - setNodeRef : à attacher au div de la colonne
+ *   - isOver : true quand un élément est traîné AU-DESSUS de cette colonne
+ *
+ *   Quand on dépose une carte, "over.id" sera "column-DOING" (par exemple)
+ *   au lieu d'un ID de tâche. Le handleDragEnd détecte le préfixe "column-"
+ *   pour déterminer la colonne cible.
+ */
 function Column({ status, tasks }: ColumnProps) {
   const config = columnConfig[status];
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
 
+  // Enregistre cette colonne comme zone de dépôt
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${status}`,
+  });
+
   return (
     <div className="flex-shrink-0 w-72 sm:w-80 lg:w-96">
-      <div className={`rounded-xl border ${config.bgColor} p-3 min-h-[200px]`}>
+      <div
+        ref={setNodeRef}
+        className={`rounded-xl border ${config.bgColor} p-3 min-h-[200px] transition-colors ${
+          isOver ? 'ring-2 ring-primary/50 ring-offset-1' : ''
+        }`}
+      >
         {/* En-tête de colonne */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -150,7 +184,7 @@ function Column({ status, tasks }: ColumnProps) {
           <div className="space-y-2">
             {tasks.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-8 italic">
-                Aucune tâche
+                {isOver ? 'Déposez ici' : 'Aucune tâche'}
               </p>
             ) : (
               tasks.map((task) => (
@@ -190,9 +224,6 @@ export default function KanbanPage() {
     [allTasks]
   );
 
-  // Tous les IDs pour le DndContext
-  const allTaskIds = useMemo(() => allTasks.map((t) => t.id), [allTasks]);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -207,25 +238,45 @@ export default function KanbanPage() {
     }
   };
 
+  /**
+   * CORRECTION — handleDragEnd avec détection de colonne droppable
+   *
+   * LOGIQUE :
+   * 1. Si over.id commence par "column-" → déposé directement sur une colonne
+   *    (même si la colonne est vide, le useDroppable enregistre la collision)
+   * 2. Sinon → over.id est l'ID d'une tâche → on trouve sa colonne
+   */
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
 
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
-    // Déterminer la colonne de destination
-    const draggedTask = allTasks.find((t) => t.id === active.id);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    // Ne rien faire si on dépose sur la même carte
+    if (activeId === overId) return;
+
+    // Trouver la tâche traînée
+    const draggedTask = allTasks.find((t) => t.id === activeId);
     if (!draggedTask) return;
 
-    // Trouver dans quelle colonne la tâche a été déposée
+    // Déterminer la colonne cible
     let targetColumn: ColumnStatus | null = null;
-    for (const [status, colTasks] of Object.entries(columns)) {
-      if (colTasks.some((t) => t.id === over.id)) {
-        targetColumn = status as ColumnStatus;
-        break;
+
+    // Cas 1 : déposé sur une colonne (drop zone)
+    if (overId.startsWith('column-')) {
+      targetColumn = overId.replace('column-', '') as ColumnStatus;
+    } else {
+      // Cas 2 : déposé sur une autre tâche → trouver sa colonne
+      const overTask = allTasks.find((t) => t.id === overId);
+      if (overTask) {
+        targetColumn = overTask.status as ColumnStatus;
       }
     }
 
+    // Mettre à jour le statut si la colonne a changé
     if (targetColumn && targetColumn !== draggedTask.status) {
       updateStatusMutation.mutateAsync({
         id: draggedTask.id,

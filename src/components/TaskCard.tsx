@@ -5,7 +5,7 @@ import { TaskResponse } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Eye, ArrowRight, Trash2 } from 'lucide-react';
+import { Calendar, Eye, ArrowRight, Trash2, UserCheck } from 'lucide-react';
 
 interface TaskCardProps {
   task: TaskResponse;
@@ -59,7 +59,7 @@ function TaskCardInner({ task, onView, onStatusChange, onDelete }: TaskCardProps
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</p>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant={status.variant} className={status.className}>
             {status.label}
           </Badge>
@@ -67,6 +67,13 @@ function TaskCardInner({ task, onView, onStatusChange, onDelete }: TaskCardProps
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {formatDate(task.dueDate)}
+            </span>
+          )}
+          {/* Affichage de l'assignataire si présent */}
+          {task.assigneeId && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <UserCheck className="h-3 w-3" />
+              {task.assigneeId}
             </span>
           )}
         </div>

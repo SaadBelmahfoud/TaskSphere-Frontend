@@ -120,7 +120,9 @@ export function useCreateTaskMutation() {
   return useMutation({
     mutationFn: createTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
+      // pour que la Kanban, la liste filtrée et les détails se mettent à jour
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success('Tâche créée avec succès');
     },
     onError: (error) => {
@@ -136,8 +138,8 @@ export function useUpdateTaskMutation(id: string) {
   return useMutation({
     mutationFn: (data: TaskUpdateRequest) => updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: taskKeys.detail(id) });
+      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success('Tâche mise à jour');
     },
     onError: (error) => {
@@ -153,8 +155,11 @@ export function useUpdateTaskStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => updateTaskStatus(id, status),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: taskKeys.detail(variables.id) });
+      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
+      // TaskKeys.lists() ne couvrait que ['tasks','list'] ce qui n'invalide
+      // PAS les requêtes filtrées ['tasks','filtered',...] utilisées par la Kanban.
+      // taskKeys.all = ['tasks'] couvre TOUTES les sous-requêtes.
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success(`Statut mis à jour : ${variables.status}`);
     },
     onError: (error) => {
@@ -170,7 +175,8 @@ export function useDeleteTaskMutation() {
   return useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success('Tâche supprimée');
     },
     onError: (error) => {
@@ -186,7 +192,8 @@ export function useAssignTaskMutation() {
   return useMutation({
     mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string }) => assignTask(id, assigneeId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success('Tâche assignée avec succès');
     },
     onError: (error) => {
