@@ -3,13 +3,15 @@
 import { memo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import TokenTimer from './TokenTimer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, ClipboardList, Shield } from 'lucide-react';
+import { LogOut, ClipboardList, Shield, Columns3, Sun, Moon } from 'lucide-react';
 
 const navItems = [
   { label: 'Mes Tâches', href: '/tasks', icon: ClipboardList },
+  { label: 'Kanban', href: '/kanban', icon: Columns3 },
   { label: 'Test Ownership', href: '/ownership', icon: Shield },
 ];
 
@@ -17,9 +19,14 @@ function NavbarInner() {
   const { auth, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -56,6 +63,18 @@ function NavbarInner() {
           <div className="flex items-center gap-3">
             <TokenTimer expiry={auth.tokenExpiry} />
 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="h-8 w-8"
+              title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Changer de thème</span>
+            </Button>
+
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-sm font-medium text-foreground">{auth.email}</span>
               <Badge variant="secondary" className="text-xs">
@@ -70,7 +89,7 @@ function NavbarInner() {
           </div>
         </div>
 
-        <div className="sm:hidden flex gap-1 pb-2">
+        <div className="sm:hidden flex gap-1 pb-2 flex-wrap">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;

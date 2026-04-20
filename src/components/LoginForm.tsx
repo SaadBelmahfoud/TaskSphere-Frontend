@@ -1,22 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/context/AuthContext';
+import { loginSchema, LoginFormData } from '@/lib/schemas';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Lock } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginForm() {
   const { login, isLoading, error, clearError } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(email, password);
+      await login(data.email, data.password);
     } catch {
       // Error is handled by the context + toast
     }
@@ -28,6 +40,25 @@ export default function LoginForm() {
     { label: 'ADMIN', email: 'admin@tasksphere.com', variant: 'outline' as const },
   ];
 
+  const handleQuickLogin = (email: string) => {
+    // Use react-hook-form setValue via native input events
+    const emailInput = document.getElementById('email') as HTMLInputElement;
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+    if (emailInput) {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      nativeInputValueSetter?.call(emailInput, email);
+      emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+      emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (passwordInput) {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      nativeInputValueSetter?.call(passwordInput, 'password123');
+      passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+      passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    clearError();
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
@@ -38,7 +69,7 @@ export default function LoginForm() {
 
         <Card>
           <CardContent className="p-6 sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {error && (
                 <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm">
                   {error}
@@ -53,12 +84,15 @@ export default function LoginForm() {
                 <Input
                   id="email"
                   type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); clearError(); }}
-                  required
+                  {...register('email', {
+                    onChange: () => clearError(),
+                  })}
                   placeholder="votre@email.com"
                   autoComplete="email"
                 />
+                {errors.email && (
+                  <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -69,12 +103,15 @@ export default function LoginForm() {
                 <Input
                   id="password"
                   type="password"
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); clearError(); }}
-                  required
+                  {...register('password', {
+                    onChange: () => clearError(),
+                  })}
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />
+                {errors.password && (
+                  <p className="text-xs text-destructive mt-1">{errors.password.message}</p>
+                )}
               </div>
 
               <Button type="submit" disabled={isLoading} className="w-full">
@@ -86,6 +123,15 @@ export default function LoginForm() {
               </Button>
             </form>
 
+            <div className="mt-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Pas de compte ?{' '}
+                <Link href="/register" className="text-primary hover:text-primary/80 font-medium">
+                  Inscrivez-vous
+                </Link>
+              </p>
+            </div>
+
             <div className="mt-6 pt-6 border-t">
               <p className="text-xs text-muted-foreground text-center mb-3">
                 Accès rapide (mot de passe : password123)
@@ -96,7 +142,7 @@ export default function LoginForm() {
                     key={quick.label}
                     variant={quick.variant}
                     size="sm"
-                    onClick={() => { setEmail(quick.email); setPassword('password123'); }}
+                    onClick={() => handleQuickLogin(quick.email)}
                     className="flex-1"
                   >
                     {quick.label}

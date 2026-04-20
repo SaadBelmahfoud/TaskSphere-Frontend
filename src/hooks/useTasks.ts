@@ -7,6 +7,7 @@ import {
   TaskUpdateRequest,
   TaskStatusRequest,
   TaskPageResponse,
+  TaskFilters,
 } from '@/types';
 
 // ===== Query Keys Factory =====
@@ -14,6 +15,8 @@ export const taskKeys = {
   all: ['tasks'] as const,
   lists: () => [...taskKeys.all, 'list'] as const,
   list: (page: number, size: number) => [...taskKeys.lists(), { page, size }] as const,
+  filteredList: (filters: TaskFilters, page: number, size: number) =>
+    [...taskKeys.all, 'filtered', filters, page, size] as const,
   details: () => [...taskKeys.all, 'detail'] as const,
   detail: (id: string) => [...taskKeys.details(), id] as const,
 };
@@ -28,10 +31,25 @@ export async function createTask(data: TaskCreateRequest): Promise<TaskResponse>
   return response.data;
 }
 
-export async function getMyTasks(page: number = 0, size: number = 20): Promise<TaskPageResponse> {
-  const response = await api.get<TaskPageResponse>('/tasks', {
-    params: { page, size },
-  });
+export async function getMyTasks(
+  page: number = 0,
+  size: number = 20,
+  filters?: TaskFilters
+): Promise<TaskPageResponse> {
+  const params: Record<string, unknown> = { page, size };
+  if (filters) {
+    if (filters.keyword) params.keyword = filters.keyword;
+    if (filters.status) params.status = filters.status;
+    if (filters.priority) params.priority = filters.priority;
+    if (filters.dueDateFrom) params.dueDateFrom = filters.dueDateFrom;
+    if (filters.dueDateTo) params.dueDateTo = filters.dueDateTo;
+    if (filters.createdFrom) params.createdFrom = filters.createdFrom;
+    if (filters.createdTo) params.createdTo = filters.createdTo;
+    if (filters.assigneeId) params.assigneeId = filters.assigneeId;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+    if (filters.sortDir) params.sortDir = filters.sortDir;
+  }
+  const response = await api.get<TaskPageResponse>('/tasks', { params });
   return response.data;
 }
 
@@ -56,15 +74,34 @@ export async function deleteTask(id: string): Promise<void> {
   await api.delete(`/tasks/${id}`);
 }
 
+export async function assignTask(id: string, assigneeId: string): Promise<TaskResponse> {
+  const response = await api.patch<TaskResponse>(`/tasks/${id}/assign`, {
+    assigneeId,
+  });
+  return response.data;
+}
+
 // ================================================================
 // HOOKS TANSTACK QUERY (avec cache + invalidation)
-// Utilisés par : tasks/page.tsx, tasks/[id]/page.tsx
+// Utilisé par : tasks/page.tsx, tasks/[id]/page.tsx
 // ================================================================
 
 export function useMyTasksQuery(page: number = 0, size: number = 20) {
   return useQuery({
     queryKey: taskKeys.list(page, size),
     queryFn: () => getMyTasks(page, size),
+    staleTime: 0,
+  });
+}
+
+export function useFilteredTasksQuery(
+  filters: TaskFilters,
+  page: number = 0,
+  size: number = 20
+) {
+  return useQuery({
+    queryKey: taskKeys.filteredList(filters, page, size),
+    queryFn: () => getMyTasks(page, size, filters),
     staleTime: 0,
   });
 }
@@ -138,6 +175,22 @@ export function useDeleteTaskMutation() {
     },
     onError: (error) => {
       toast.error('Erreur lors de la suppression', {
+        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      });
+    },
+  });
+}
+
+export function useAssignTaskMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string }) => assignTask(id, assigneeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      toast.success('Tâche assignée avec succès');
+    },
+    onError: (error) => {
+      toast.error("Erreur lors de l'assignation", {
         description: error instanceof Error ? error.message : 'Erreur inconnue',
       });
     },

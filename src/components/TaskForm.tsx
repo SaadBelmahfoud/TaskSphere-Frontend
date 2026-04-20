@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { TaskCreateRequest, TaskUpdateRequest } from '@/types';
+import { taskCreateSchema, taskUpdateSchema, TaskCreateFormData, TaskUpdateFormData } from '@/lib/schemas';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface TaskFormProps {
   mode: 'create' | 'edit';
@@ -22,39 +25,59 @@ interface TaskFormProps {
 }
 
 export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoading }: TaskFormProps) {
-  const [title, setTitle] = useState(initialData?.title || '');
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [priority, setPriority] = useState(initialData?.priority || 'MEDIUM');
-  const [dueDate, setDueDate] = useState(initialData?.dueDate?.split('T')[0] || '');
-  const [error, setError] = useState<string | null>(null);
+  const isCreate = mode === 'create';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<TaskCreateFormData | TaskUpdateFormData>({
+    resolver: zodResolver(isCreate ? taskCreateSchema : taskUpdateSchema),
+    defaultValues: {
+      title: initialData?.title || '',
+      description: initialData?.description || '',
+      priority: (initialData?.priority || 'MEDIUM') as TaskCreateFormData['priority'],
+      dueDate: initialData?.dueDate?.split('T')[0] || '',
+    },
+  });
 
-    if (!title.trim()) {
-      setError('Le titre est obligatoire');
-      return;
+  const currentPriority = watch('priority') as string || 'MEDIUM';
+
+  // Reset form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        title: initialData.title,
+        description: initialData.description,
+        priority: initialData.priority as TaskUpdateFormData['priority'],
+        dueDate: initialData.dueDate?.split('T')[0] || '',
+      });
     }
+  }, [initialData, reset]);
 
+  const handleFormSubmit = async (data: TaskCreateFormData | TaskUpdateFormData) => {
     try {
-      const data: TaskCreateRequest | TaskUpdateRequest = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        priority: priority || undefined,
-        dueDate: dueDate || undefined,
+      const payload: TaskCreateRequest | TaskUpdateRequest = {
+        title: data.title?.trim() as string,
+        description: data.description?.trim() || undefined,
+        priority: data.priority || undefined,
+        dueDate: data.dueDate || undefined,
       };
 
-      await onSubmit(data);
+      await onSubmit(payload);
       if (mode === 'create') {
-        setTitle('');
-        setDescription('');
-        setPriority('MEDIUM');
-        setDueDate('');
+        reset({
+          title: '',
+          description: '',
+          priority: 'MEDIUM',
+          dueDate: '',
+        });
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde';
-      setError(message);
+    } catch {
+      // Error handled by parent
     }
   };
 
@@ -66,38 +89,33 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
   ];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="task-title">Titre *</Label>
         <Input
           id="task-title"
           type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          minLength={3}
-          maxLength={255}
+          {...register('title')}
           placeholder="Titre de la tâche"
         />
+        {errors.title && (
+          <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="task-desc">Description</Label>
         <Textarea
           id="task-desc"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          {...register('description')}
           maxLength={5000}
           rows={3}
           placeholder="Description détaillée (optionnel)"
           className="resize-none"
         />
+        {errors.description && (
+          <p className="text-xs text-destructive mt-1">{errors.description.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -107,9 +125,9 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
             <button
               key={p.value}
               type="button"
-              onClick={() => setPriority(p.value)}
+              onClick={() => setValue('priority', p.value as TaskCreateFormData['priority'])}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                priority === p.value
+                currentPriority === p.value
                   ? `${p.className} ring-2 ring-ring ring-offset-2`
                   : 'bg-card text-muted-foreground border-border hover:bg-muted'
               }`}
@@ -125,8 +143,7 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
         <Input
           id="task-date"
           type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          {...register('dueDate')}
         />
       </div>
 

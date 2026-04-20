@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/context/AuthContext';
 import QueryProvider from '@/providers/QueryProvider';
+import { ThemeProvider } from '@/providers/ThemeProvider';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
@@ -15,14 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body>
-        <QueryProvider>
-          <AuthProvider>
-            {children}
-            <Toaster richColors closeButton position="bottom-right" />
-          </AuthProvider>
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+              <Toaster richColors closeButton position="bottom-right" />
+            </AuthProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

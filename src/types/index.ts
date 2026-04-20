@@ -13,6 +13,7 @@ export interface TaskResponse {
   completedAt: string | null;
   createdAt: string | null;
   userId: string;
+  assigneeId?: string;
 }
 
 export interface TaskCreateRequest {
@@ -20,6 +21,7 @@ export interface TaskCreateRequest {
   description?: string;
   priority?: string;
   dueDate?: string;
+  assigneeId?: string;
 }
 
 export interface TaskUpdateRequest {
@@ -27,6 +29,7 @@ export interface TaskUpdateRequest {
   description?: string;
   priority?: string;
   dueDate?: string;
+  assigneeId?: string;
 }
 
 export interface TaskStatusRequest {
@@ -41,9 +44,32 @@ export interface TaskPageResponse {
   size: number;
 }
 
+// ===== Filtres avancés pour les tâches =====
+export interface TaskFilters {
+  keyword?: string;
+  status?: string;
+  priority?: string;
+  dueDateFrom?: string;
+  dueDateTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  assigneeId?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
 }
 
 export interface LoginResponse {

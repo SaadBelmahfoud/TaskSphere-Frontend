@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { AuthState } from '@/types';
+import { AuthState, RegisterRequest, LoginResponse } from '@/types';
 
 // ===== Client Axios avec intercepteur JWT + auto-refresh =====
 //
@@ -209,5 +209,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// ===== Fonction d'inscription =====
+export async function register(data: RegisterRequest) {
+  const response = await api.post<LoginResponse>('/auth/register', data);
+  return response.data;
+}
 
 export default api;
