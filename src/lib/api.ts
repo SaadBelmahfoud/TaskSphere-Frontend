@@ -1,64 +1,52 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { AuthState, RegisterRequest, LoginResponse } from '@/types';
 
-// ===== Client Axios avec intercepteur JWT + auto-refresh =====
+// ═══════════════════════════════════════════════════════════════════
+// ARCHITECTURE JWT + AUTO-REFRESH
+// ═══════════════════════════════════════════════════════════════════
 //
-// Architecture des interceptors Axios :
-// ┌──────────────────────────────────────────────────────────────┐
-// │                    Requête (Request)                         │
-// │                                                              │
-// │  Component → api.get('/tasks')                               │
-// │       │                                                      │
-// │       ▼                                                      │
-// │  ┌──────────────────────────────────┐                        │
-// │  │  Request Interceptor             │                        │
-// │  │  1. Lit le token localStorage    │                        │
-// │  │  2. Injecte Authorization header │                        │
-// │  │     Authorization: Bearer <JWT>  │                        │
-// │  └──────────────────────────────────┘                        │
-// │       │                                                      │
-// │       ▼                                                      │
-// │  ┌──────────────────────────────────┐                        │
-// │  │  Backend (localhost:8080)        │                        │
-// │  │  via Next.js rewrite proxy       │                        │
-// │  └──────────────────────────────────┘                        │
-// │       │                                                      │
-// │       ▼                                                      │
-// │  ┌──────────────────────────────────┐                        │
-// │  │  Response Interceptor            │                        │
-// │  │  - 200 OK → passe la réponse    │                        │
-// │  │  - 401 → lance le refresh token │                        │
-// │  │    ┌─────────────────────────┐   │                        │
-// │  │    │ Queue de requêtes      │   │                        │
-// │  │    │ en attente pendant     │   │                        │
-// │  │    │ le refresh             │   │                        │
-// │  │    └─────────────────────────┘   │                        │
-// │  └──────────────────────────────────┘                        │
-// └──────────────────────────────────────────────────────────────┘
+// 2 instances Axios :
+//   - api          : intercepteur Bearer + auto-refresh sur 401
+//   - refreshApi   : instance SÉPARÉE, SANS intercepteur
+//                    Utilisée UNIQUEMENT pour POST /auth/refresh
+//                    (évite d'envoyer un token expiré dans le header)
+//
+// Flux de refresh :
+//   1. Requête → 401 → intercepteur réponse
+//   2. Interceptor appelle refreshCallback() via refreshApi (SANS Bearer)
+//   3. Backend valide le refreshToken → retourne nouveau accessToken
+//   4. Interceptor met à jour le header → retry la requête originale
+// ═══════════════════════════════════════════════════════════════════
 
+// ===== Instance principale (avec intercepteurs) =====
 const api = axios.create({
-  baseURL: '/api/v1', // Proxied via Next.js rewrites → localhost:8080
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: '/api/v1',
+  headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
-// ===== Callback de refresh token (injecté par AuthContext) =====
-let refreshCallback: (() => Promise<AuthState | null>) | null = null;
+// ===== Instance SÉPARÉE pour le refresh (SANS intercepteur Bearer) =====
+// CRITICAL: Cette instance n'attache PAS le Authorization header.
+// Le refresh endpoint (/api/v1/auth/refresh) est permitAll() dans Spring Security,
+// il n'a besoin que du refreshToken dans le body JSON.
+export const refreshApi = axios.create({
+  baseURL: '/api/v1',
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 15000,
+});
 
+// ===== Callbacks injectés par AuthContext =====
+let refreshCallback: (() => Promise<AuthState | null>) | null = null;
 export function setRefreshCallback(cb: (() => Promise<AuthState | null>) | null) {
   refreshCallback = cb;
 }
 
-// ===== Callback de mise à jour du token dans le state =====
 let tokenUpdateCallback: ((state: AuthState) => void) | null = null;
-
 export function setTokenUpdateCallback(cb: ((state: AuthState) => void) | null) {
   tokenUpdateCallback = cb;
 }
 
-// ===== Lecture du token courant =====
+// ===== Lecture du token depuis localStorage =====
 export function getCurrentToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -71,7 +59,7 @@ export function getCurrentToken(): string | null {
   }
 }
 
-// ===== Intercepteur requête : injecte le Bearer token =====
+// ===== Intercepteur requête : injecte Bearer token =====
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getCurrentToken();
@@ -83,24 +71,13 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ===== Intercepteur réponse : auto-refresh si 401 =====
+// ===== Intercepteur réponse : auto-refresh sur 401 =====
 //
-// Schéma de gestion du refresh token avec queue :
-// ┌───────────────────────────────────────────────────────┐
-// │  Requête 1 → 401                                      │
-// │  ┌─────────────────────────────────┐                  │
-// │  │  isRefreshing = true            │                  │
-// │  │  refreshCallback() → new token  │                  │
-// │  │                                 │                  │
-// │  │  Pendant ce temps :             │                  │
-// │  │  Requête 2 → 401 → queue.push() │                  │
-// │  │  Requête 3 → 401 → queue.push() │                  │
-// │  │                                 │                  │
-// │  │  Après refresh :                │                  │
-// │  │  processQueue() → rejoue 2 et 3 │                  │
-// │  │  isRefreshing = false            │                  │
-// │  └─────────────────────────────────┘                  │
-// └───────────────────────────────────────────────────────┘
+// Le backend retourne maintenant 401 (pas 403) grâce au fix de SecurityConfig
+// (AuthenticationEntryPoint custom). Donc on ne traite que le 401.
+//
+// Les 403 sont maintenant exclusivement des erreurs métier (permission refusée
+// par le contrôleur), ils ne déclenchent PAS de refresh.
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -126,10 +103,14 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Si 401 et pas déjà en cours de refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const status = error.response?.status;
+
+    // Seul le 401 déclenche le refresh (erreur d'authentification)
+    // Le 403 est une erreur métier (permission refusée) → pas de refresh
+    if (status === 401 && !originalRequest?._retry) {
+      console.log(`[TaskSphere API] 401 sur ${originalRequest?.url} — Tentative de refresh...`);
+
       if (isRefreshing) {
-        // On attend que le refresh en cours se termine
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token: string) => {
@@ -154,27 +135,13 @@ api.interceptors.response.use(
         const newAuthState = await refreshCallback();
 
         if (!newAuthState?.accessToken) {
-          // Refresh a échoué → déconnexion
+          console.error('[TaskSphere API] Refresh échoué — pas de nouveau token');
           processQueue(new Error('Refresh failed'), null);
-          if (tokenUpdateCallback) {
-            tokenUpdateCallback({
-              accessToken: null,
-              refreshToken: null,
-              email: null,
-              role: null,
-              isAuthenticated: false,
-              tokenExpiry: null,
-            });
-          }
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('tasksphere_auth');
-          }
-          if (typeof window !== 'undefined') {
-            window.location.href = '/';
-          }
+          forceLogout();
           return Promise.reject(error);
         }
 
+        console.log('[TaskSphere API] Refresh réussi — nouveau token obtenu');
         processQueue(null, newAuthState.accessToken);
 
         if (originalRequest.headers) {
@@ -183,23 +150,9 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
+        console.error('[TaskSphere API] Refresh échoué avec erreur:', refreshError);
         processQueue(refreshError, null);
-        if (tokenUpdateCallback) {
-          tokenUpdateCallback({
-            accessToken: null,
-            refreshToken: null,
-            email: null,
-            role: null,
-            isAuthenticated: false,
-            tokenExpiry: null,
-          });
-        }
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('tasksphere_auth');
-        }
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
-        }
+        forceLogout();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -209,6 +162,24 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// ===== Force la déconnexion =====
+function forceLogout() {
+  if (tokenUpdateCallback) {
+    tokenUpdateCallback({
+      accessToken: null,
+      refreshToken: null,
+      email: null,
+      role: null,
+      isAuthenticated: false,
+      tokenExpiry: null,
+    });
+  }
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('tasksphere_auth');
+    window.location.href = '/';
+  }
+}
 
 // ===== Fonction d'inscription =====
 export async function register(data: RegisterRequest) {

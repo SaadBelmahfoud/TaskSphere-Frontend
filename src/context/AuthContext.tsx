@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import api, { setRefreshCallback, setTokenUpdateCallback } from '@/lib/api';
+import api, { setRefreshCallback, setTokenUpdateCallback, refreshApi } from '@/lib/api';
 import { isApiError } from '@/types';
 import { AuthState, LoginRequest, LoginResponse } from '@/types';
 
@@ -34,39 +34,44 @@ const AuthContext = createContext<AuthContextType>({
   clearError: () => {},
 });
 
+const AUTH_STORAGE_KEY = 'tasksphere_auth';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState>(defaultAuth);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // ===== Hydratation depuis localStorage au mount =====
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('tasksphere_auth');
+      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as AuthState;
         if (parsed.accessToken && parsed.tokenExpiry && parsed.tokenExpiry > Date.now()) {
           setAuth(parsed);
         } else {
-          localStorage.removeItem('tasksphere_auth');
+          localStorage.removeItem(AUTH_STORAGE_KEY);
         }
       }
     } catch {
-      localStorage.removeItem('tasksphere_auth');
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // ===== Mise à jour du state + localStorage =====
   const updateAuth = useCallback((newAuth: AuthState) => {
     setAuth(newAuth);
     if (newAuth.isAuthenticated) {
-      localStorage.setItem('tasksphere_auth', JSON.stringify(newAuth));
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newAuth));
     } else {
-      localStorage.removeItem('tasksphere_auth');
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, []);
 
+  // ===== Nettoyage du cache React Query =====
   const clearQueryCache = useCallback(() => {
     try {
       window.dispatchEvent(new CustomEvent('auth-change', { detail: { clearCache: true } }));
@@ -75,26 +80,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // ===== Callback de refresh token =====
+  // CRITICAL: utilise refreshApi (SANS intercepteur Bearer) pour appeler /auth/refresh
   useEffect(() => {
     setRefreshCallback(async () => {
       try {
-        const stored = localStorage.getItem('tasksphere_auth');
+        const stored = localStorage.getItem(AUTH_STORAGE_KEY);
         if (!stored) return null;
+
         const parsed = JSON.parse(stored) as AuthState;
         if (!parsed.refreshToken) return null;
 
-        const response = await api.post<LoginResponse>('/auth/refresh', {
+        // Utiliser refreshApi (instance SÉPARÉE, SANS intercepteur Bearer)
+        const response = await refreshApi.post<LoginResponse>('/auth/refresh', {
           refreshToken: parsed.refreshToken,
         });
 
+        if (!response.data?.accessToken) return null;
+
+        const expiresInMs = parseInt(response.data.expiresIn, 10) * 1000 || 3600_000;
         const newAuth: AuthState = {
           accessToken: response.data.accessToken,
           refreshToken: response.data.refreshToken,
           email: parsed.email,
           role: parsed.role,
           isAuthenticated: true,
-          tokenExpiry: Date.now() + parseInt(response.data.expiresIn) * 1000,
+          tokenExpiry: Date.now() + expiresInMs,
         };
+
         updateAuth(newAuth);
         return newAuth;
       } catch {
@@ -112,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [updateAuth]);
 
+  // ===== LOGIN =====
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
@@ -122,24 +136,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       } satisfies LoginRequest);
 
+      if (!response.data?.accessToken || !response.data?.refreshToken) {
+        throw new Error('Réponse de login invalide: token manquant');
+      }
+
+      // Décoder le JWT pour extraire email + rôle
       let emailFromToken = email;
       let roleFromToken = 'USER';
-
       try {
-        const payload = JSON.parse(atob(response.data.accessToken.split('.')[1]));
+        const base64Payload = response.data.accessToken.split('.')[1];
+        const payload = JSON.parse(atob(base64Payload));
         emailFromToken = payload.sub || email;
         roleFromToken = payload.role || 'USER';
       } catch {
         // JWT decode failed, keep defaults
       }
 
+      const expiresInMs = parseInt(response.data.expiresIn, 10) * 1000 || 3600_000;
       const newAuth: AuthState = {
         accessToken: response.data.accessToken,
         refreshToken: response.data.refreshToken,
         email: emailFromToken,
         role: roleFromToken,
         isAuthenticated: true,
-        tokenExpiry: Date.now() + parseInt(response.data.expiresIn) * 1000,
+        tokenExpiry: Date.now() + expiresInMs,
       };
 
       clearQueryCache();
@@ -147,11 +167,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.success(`Bienvenue, ${emailFromToken} !`, {
         description: `Connecté en tant que ${roleFromToken}`,
       });
-      router.push('/tasks');
+      router.push('/dashboard');
     } catch (err: unknown) {
       const message = isApiError(err)
         ? err.response.data.error || err.response.data.message || 'Erreur serveur'
-        : 'Erreur de connexion au serveur';
+        : err instanceof Error
+          ? err.message
+          : 'Erreur de connexion au serveur';
       setError(message);
       toast.error('Échec de la connexion', { description: message });
       throw new Error(message);
@@ -160,15 +182,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [router, updateAuth, clearQueryCache]);
 
+  // ===== LOGOUT =====
   const logout = useCallback(async () => {
     try {
       if (auth.refreshToken) {
-        await api.post('/auth/logout', {
+        // Utiliser refreshApi pour le logout aussi (pas besoin de Bearer)
+        await refreshApi.post('/auth/logout', {
           refreshToken: auth.refreshToken,
         });
       }
     } catch {
-      // Even if server logout fails, clear client state
+      // Le serveur peut être injoignable, on nettoie quand même
     } finally {
       clearQueryCache();
       updateAuth(defaultAuth);

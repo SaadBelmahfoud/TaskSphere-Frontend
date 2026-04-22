@@ -118,3 +118,56 @@ export function isApiError(error: unknown): error is { response: { data: ApiErro
     typeof (error as any).response.data === 'object'
   );
 }
+
+// ===== Sprint 3 — Types Collaboration =====
+
+export interface CommentResponse {
+  id: string;
+  content: string;
+  username: string;
+  taskId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentCreateRequest {
+  content: string;
+}
+
+export interface ActivityLogResponse {
+  id: string;
+  action: string;
+  description: string;
+  username: string;
+  taskId: string | null;
+  taskTitle: string | null;
+  timestamp: string;
+}
+
+export interface ActivityLogPageResponse {
+  content: ActivityLogResponse[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface DashboardStatsResponse {
+  totalTasks: number;
+  tasksByStatus: Record<string, number>;
+  tasksByPriority: Record<string, number>;
+  recentActivities: ActivityLogResponse[];
+  tasksCreatedThisWeek: number;
+  tasksCompletedThisWeek: number;
+  overdueTasks: number;
+}
+
+export interface UserAdminResponse {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  enabled: boolean;
+}

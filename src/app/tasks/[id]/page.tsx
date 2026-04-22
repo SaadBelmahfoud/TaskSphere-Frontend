@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import TaskForm from '@/components/TaskForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import CommentsSection from '@/components/CommentsSection';
 import {
   useTaskQuery,
   useUpdateTaskMutation,
@@ -397,6 +398,8 @@ export default function TaskDetailPage() {
         onCancel={() => setShowDelete(false)}
         isLoading={deleteMutation.isPending}
       />
+
+      <CommentsSection taskId={task.id} />
     </AppLayout>
   );
 }

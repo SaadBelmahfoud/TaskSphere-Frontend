@@ -7,7 +7,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'TaskSphere',
-  description: 'TaskSphere Frontend — Sprint 2 • shadcn/ui • TanStack Query • Sonner Toast',
+  description: 'TaskSphere Frontend — Sprint 3 • Collaboration, Dashboard, Admin • shadcn/ui • TanStack Query • Sonner Toast',
 };
 
 export default function RootLayout({
