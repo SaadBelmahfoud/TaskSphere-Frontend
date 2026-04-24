@@ -2,40 +2,37 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { AuthState, RegisterRequest, LoginResponse } from '@/types';
 
 // ═══════════════════════════════════════════════════════════════════
-// ARCHITECTURE JWT + AUTO-REFRESH
+// JWT + AUTO-REFRESH ARCHITECTURE
 // ═══════════════════════════════════════════════════════════════════
 //
-// 2 instances Axios :
-//   - api          : intercepteur Bearer + auto-refresh sur 401
-//   - refreshApi   : instance SÉPARÉE, SANS intercepteur
-//                    Utilisée UNIQUEMENT pour POST /auth/refresh
-//                    (évite d'envoyer un token expiré dans le header)
+// 2 Axios instances:
+//   - api          : Bearer interceptor + auto-refresh on 401
+//   - refreshApi   : SEPARATE instance, WITHOUT interceptor
+//                    Used ONLY for POST /auth/refresh
+//                    (avoids sending expired token in header)
 //
-// Flux de refresh :
-//   1. Requête → 401 → intercepteur réponse
-//   2. Interceptor appelle refreshCallback() via refreshApi (SANS Bearer)
-//   3. Backend valide le refreshToken → retourne nouveau accessToken
-//   4. Interceptor met à jour le header → retry la requête originale
+// Refresh flow:
+//   1. Request → 401 → response interceptor
+//   2. Interceptor calls refreshCallback() via refreshApi (WITHOUT Bearer)
+//   3. Backend validates refreshToken → returns new accessToken
+//   4. Interceptor updates header → retry original request
 // ═══════════════════════════════════════════════════════════════════
 
-// ===== Instance principale (avec intercepteurs) =====
+// ===== Main instance (with interceptors) =====
 const api = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
-// ===== Instance SÉPARÉE pour le refresh (SANS intercepteur Bearer) =====
-// CRITICAL: Cette instance n'attache PAS le Authorization header.
-// Le refresh endpoint (/api/v1/auth/refresh) est permitAll() dans Spring Security,
-// il n'a besoin que du refreshToken dans le body JSON.
+// ===== SEPARATE instance for refresh (WITHOUT Bearer interceptor) =====
 export const refreshApi = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
-// ===== Callbacks injectés par AuthContext =====
+// ===== Callbacks injected by AuthContext =====
 let refreshCallback: (() => Promise<AuthState | null>) | null = null;
 export function setRefreshCallback(cb: (() => Promise<AuthState | null>) | null) {
   refreshCallback = cb;
@@ -46,7 +43,7 @@ export function setTokenUpdateCallback(cb: ((state: AuthState) => void) | null) 
   tokenUpdateCallback = cb;
 }
 
-// ===== Lecture du token depuis localStorage =====
+// ===== Read token from localStorage =====
 export function getCurrentToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -59,7 +56,7 @@ export function getCurrentToken(): string | null {
   }
 }
 
-// ===== Intercepteur requête : injecte Bearer token =====
+// ===== Request interceptor: inject Bearer token =====
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getCurrentToken();
@@ -71,14 +68,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ===== Intercepteur réponse : auto-refresh sur 401 =====
-//
-// Le backend retourne maintenant 401 (pas 403) grâce au fix de SecurityConfig
-// (AuthenticationEntryPoint custom). Donc on ne traite que le 401.
-//
-// Les 403 sont maintenant exclusivement des erreurs métier (permission refusée
-// par le contrôleur), ils ne déclenchent PAS de refresh.
-
+// ===== Response interceptor: auto-refresh on 401 =====
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -105,10 +95,10 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
 
-    // Seul le 401 déclenche le refresh (erreur d'authentification)
-    // Le 403 est une erreur métier (permission refusée) → pas de refresh
+    // Only 401 triggers refresh (authentication error)
+    // 403 is a business error (permission denied) → no refresh
     if (status === 401 && !originalRequest?._retry) {
-      console.log(`[TaskSphere API] 401 sur ${originalRequest?.url} — Tentative de refresh...`);
+      console.log(`[TaskSphere API] 401 on ${originalRequest?.url} — Attempting refresh...`);
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -135,13 +125,13 @@ api.interceptors.response.use(
         const newAuthState = await refreshCallback();
 
         if (!newAuthState?.accessToken) {
-          console.error('[TaskSphere API] Refresh échoué — pas de nouveau token');
+          console.error('[TaskSphere API] Refresh failed — no new token');
           processQueue(new Error('Refresh failed'), null);
           forceLogout();
           return Promise.reject(error);
         }
 
-        console.log('[TaskSphere API] Refresh réussi — nouveau token obtenu');
+        console.log('[TaskSphere API] Refresh successful — new token obtained');
         processQueue(null, newAuthState.accessToken);
 
         if (originalRequest.headers) {
@@ -150,7 +140,7 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('[TaskSphere API] Refresh échoué avec erreur:', refreshError);
+        console.error('[TaskSphere API] Refresh failed with error:', refreshError);
         processQueue(refreshError, null);
         forceLogout();
         return Promise.reject(refreshError);
@@ -163,7 +153,7 @@ api.interceptors.response.use(
   }
 );
 
-// ===== Force la déconnexion =====
+// ===== Force logout =====
 function forceLogout() {
   if (tokenUpdateCallback) {
     tokenUpdateCallback({
@@ -181,7 +171,7 @@ function forceLogout() {
   }
 }
 
-// ===== Fonction d'inscription =====
+// ===== Register function =====
 export async function register(data: RegisterRequest) {
   const response = await api.post<LoginResponse>('/auth/register', data);
   return response.data;

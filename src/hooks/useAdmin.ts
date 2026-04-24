@@ -9,7 +9,7 @@ export const adminKeys = {
   users: () => [...adminKeys.all, 'users'] as const,
 };
 
-// ===== Fonctions API =====
+// ===== API functions =====
 
 export async function getAllUsers(): Promise<UserAdminResponse[]> {
   const response = await api.get<UserAdminResponse[]>('/iam/admin/users');
@@ -24,7 +24,7 @@ export async function toggleUserStatus(userId: string): Promise<void> {
   await api.patch(`/iam/admin/users/${userId}/toggle`);
 }
 
-// ===== Hooks TanStack Query =====
+// ===== TanStack Query Hooks =====
 
 export function useAllUsersQuery() {
   return useQuery({
@@ -41,11 +41,11 @@ export function useUpdateUserRoleMutation() {
       updateUserRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-      toast.success('Rôle mis à jour');
+      toast.success('Role updated');
     },
     onError: (error) => {
-      toast.error('Erreur lors de la mise à jour du rôle', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error updating role', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -57,11 +57,11 @@ export function useToggleUserStatusMutation() {
     mutationFn: toggleUserStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-      toast.success('Statut utilisateur mis à jour');
+      toast.success('User status updated');
     },
     onError: (error) => {
-      toast.error('Erreur lors du changement de statut', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error changing user status', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });

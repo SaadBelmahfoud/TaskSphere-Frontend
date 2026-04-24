@@ -41,7 +41,6 @@ export default function LoginForm() {
   ];
 
   const handleQuickLogin = (email: string) => {
-    // Use react-hook-form setValue via native input events
     const emailInput = document.getElementById('email') as HTMLInputElement;
     const passwordInput = document.getElementById('password') as HTMLInputElement;
     if (emailInput) {
@@ -64,7 +63,7 @@ export default function LoginForm() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">TaskSphere</h1>
-          <p className="text-muted-foreground">Connectez-vous pour accéder à vos tâches</p>
+          <p className="text-muted-foreground">Sign in to access your tasks</p>
         </div>
 
         <Card>
@@ -87,7 +86,7 @@ export default function LoginForm() {
                   {...register('email', {
                     onChange: () => clearError(),
                   })}
-                  placeholder="votre@email.com"
+                  placeholder="your@email.com"
                   autoComplete="email"
                 />
                 {errors.email && (
@@ -98,7 +97,7 @@ export default function LoginForm() {
               <div className="space-y-2">
                 <Label htmlFor="password" className="flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5" />
-                  Mot de passe
+                  Password
                 </Label>
                 <Input
                   id="password"
@@ -116,25 +115,25 @@ export default function LoginForm() {
 
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connexion...</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Signing in...</>
                 ) : (
-                  'Se connecter'
+                  'Sign in'
                 )}
               </Button>
             </form>
 
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground">
-                Pas de compte ?{' '}
+                Don&apos;t have an account?{' '}
                 <Link href="/register" className="text-primary hover:text-primary/80 font-medium">
-                  Inscrivez-vous
+                  Register
                 </Link>
               </p>
             </div>
 
             <div className="mt-6 pt-6 border-t">
               <p className="text-xs text-muted-foreground text-center mb-3">
-                Accès rapide (mot de passe : password123)
+                Quick access (password: password123)
               </p>
               <div className="flex gap-2">
                 {quickLogins.map((quick) => (
@@ -154,7 +153,7 @@ export default function LoginForm() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          TaskSphere Frontend — Sprint 2 • JWT Auth + CRUD + Ownership
+          TaskSphere — Sprint 3 &bull; JWT Auth + CRUD + Ownership
         </p>
       </div>
     </div>

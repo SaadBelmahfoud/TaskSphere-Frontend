@@ -15,9 +15,9 @@ import {
 import { useDashboardStatsQuery } from '@/hooks/useDashboard';
 
 const statusLabels: Record<string, string> = {
-  TODO: 'À faire',
-  DOING: 'En cours',
-  DONE: 'Terminé',
+  TODO: 'To Do',
+  DOING: 'In Progress',
+  DONE: 'Done',
 };
 
 const statusColors: Record<string, string> = {
@@ -27,10 +27,10 @@ const statusColors: Record<string, string> = {
 };
 
 const priorityLabels: Record<string, string> = {
-  LOW: 'Basse',
-  MEDIUM: 'Moyenne',
-  HIGH: 'Haute',
-  CRITICAL: 'Critique',
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  CRITICAL: 'Critical',
 };
 
 const priorityColors: Record<string, string> = {
@@ -41,7 +41,7 @@ const priorityColors: Record<string, string> = {
 };
 
 function formatTimestamp(timestamp: string) {
-  return new Date(timestamp).toLocaleDateString('fr-FR', {
+  return new Date(timestamp).toLocaleDateString('en-US', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -56,25 +56,25 @@ export default function DashboardPage() {
   const statCards = stats
     ? [
         {
-          label: 'Total des tâches',
+          label: 'Total Tasks',
           value: stats.totalTasks,
           icon: ClipboardList,
           color: 'text-primary',
         },
         {
-          label: 'Créées cette semaine',
+          label: 'Created This Week',
           value: stats.tasksCreatedThisWeek,
           icon: CalendarPlus,
           color: 'text-emerald-600',
         },
         {
-          label: 'Terminées cette semaine',
+          label: 'Completed This Week',
           value: stats.tasksCompletedThisWeek,
           icon: CheckCircle2,
           color: 'text-emerald-500',
         },
         {
-          label: 'En retard',
+          label: 'Overdue',
           value: stats.overdueTasks,
           icon: AlertTriangle,
           color: 'text-red-500',
@@ -86,13 +86,13 @@ export default function DashboardPage() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Tableau de bord</h1>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Vue d&apos;ensemble de vos tâches et activités récentes
+            Overview of your tasks and recent activities
           </p>
         </div>
 
-        {/* Cartes statistiques */}
+        {/* Stat cards */}
         {isLoading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -111,7 +111,7 @@ export default function DashboardPage() {
           <Card className="border-destructive/50">
             <CardContent className="p-6 text-center">
               <p className="text-destructive">
-                Erreur lors du chargement des statistiques
+                Error loading statistics
               </p>
             </CardContent>
           </Card>
@@ -136,13 +136,13 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Tâches par statut et par priorité */}
+        {/* Tasks by status and priority */}
         {!isLoading && !isError && stats && (
           <div className="grid md:grid-cols-2 gap-4">
-            {/* Par statut */}
+            {/* By status */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Tâches par statut</CardTitle>
+                <CardTitle className="text-base">Tasks by Status</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {Object.entries(statusLabels).map(([key, label]) => {
@@ -169,10 +169,10 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Par priorité */}
+            {/* By priority */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Tâches par priorité</CardTitle>
+                <CardTitle className="text-base">Tasks by Priority</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {Object.entries(priorityLabels).map(([key, label]) => {
@@ -201,13 +201,13 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Activités récentes */}
+        {/* Recent activities */}
         {!isLoading && !isError && stats && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                Activités récentes
+                Recent Activities
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -232,7 +232,7 @@ export default function DashboardPage() {
                           <span className="text-xs text-muted-foreground">
                             {activity.username}
                           </span>
-                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground">&bull;</span>
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {formatTimestamp(activity.timestamp)}
@@ -244,7 +244,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-6">
-                  Aucune activité récente
+                  No recent activities
                 </p>
               )}
             </CardContent>

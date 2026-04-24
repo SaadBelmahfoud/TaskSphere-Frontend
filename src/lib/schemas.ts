@@ -1,82 +1,82 @@
 import { z } from 'zod';
 
-// ===== Schéma de validation pour la connexion =====
+// ===== Login validation schema =====
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, "L'email est obligatoire")
-    .email("Format d'email invalide"),
+    .min(1, 'Email is required')
+    .email('Invalid email format'),
   password: z
     .string()
-    .min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
+    .min(6, 'Password must be at least 6 characters'),
 });
 
-// ===== Schéma de validation pour l'inscription =====
+// ===== Registration validation schema =====
 export const registerSchema = z
   .object({
     username: z
       .string()
-      .min(3, "Le nom d'utilisateur doit contenir au moins 3 caractères")
-      .max(50, "Le nom d'utilisateur ne peut pas dépasser 50 caractères"),
+      .min(3, 'Username must be at least 3 characters')
+      .max(50, 'Username cannot exceed 50 characters'),
     firstName: z
       .string()
-      .min(1, 'Le prénom est obligatoire'),
+      .min(1, 'First name is required'),
     lastName: z
       .string()
-      .min(1, 'Le nom est obligatoire'),
+      .min(1, 'Last name is required'),
     email: z
       .string()
-      .min(1, "L'email est obligatoire")
-      .email("Format d'email invalide"),
+      .min(1, 'Email is required')
+      .email('Invalid email format'),
     password: z
       .string()
-      .min(6, 'Le mot de passe doit contenir au moins 6 caractères')
+      .min(6, 'Password must be at least 6 characters')
       .regex(
         /^(?=.*[A-Za-z])(?=.*\d)/,
-        'Le mot de passe doit contenir au moins une lettre et un chiffre'
+        'Password must contain at least one letter and one number'
       ),
     confirmPassword: z
       .string()
-      .min(1, 'La confirmation du mot de passe est obligatoire'),
+      .min(1, 'Password confirmation is required'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Les mots de passe ne correspondent pas',
+    message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
 
-// ===== Schéma de validation pour la création de tâche =====
+// ===== Task creation validation schema =====
 export const taskCreateSchema = z.object({
   title: z
     .string()
-    .min(3, 'Le titre doit contenir au moins 3 caractères')
-    .max(255, 'Le titre ne peut pas dépasser 255 caractères'),
+    .min(3, 'Title must be at least 3 characters')
+    .max(255, 'Title cannot exceed 255 characters'),
   description: z
     .string()
-    .max(5000, 'La description ne peut pas dépasser 5000 caractères')
+    .max(5000, 'Description cannot exceed 5000 characters')
     .optional()
     .or(z.literal('')),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
   dueDate: z.string().optional().or(z.literal('')),
 });
 
-// ===== Schéma de validation pour la mise à jour de tâche =====
+// ===== Task update validation schema =====
 export const taskUpdateSchema = z.object({
   title: z
     .string()
-    .min(3, 'Le titre doit contenir au moins 3 caractères')
-    .max(255, 'Le titre ne peut pas dépasser 255 caractères')
+    .min(3, 'Title must be at least 3 characters')
+    .max(255, 'Title cannot exceed 255 characters')
     .optional()
     .or(z.literal('')),
   description: z
     .string()
-    .max(5000, 'La description ne peut pas dépasser 5000 caractères')
+    .max(5000, 'Description cannot exceed 5000 characters')
     .optional()
     .or(z.literal('')),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
   dueDate: z.string().optional().or(z.literal('')),
 });
 
-// ===== Types inférés depuis les schémas =====
+// ===== Inferred types from schemas =====
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type TaskCreateFormData = z.infer<typeof taskCreateSchema>;

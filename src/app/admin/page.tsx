@@ -7,7 +7,7 @@ import AppLayout from '@/components/AppLayout';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useAuth } from '@/context/AuthContext';
 import { useAllUsersQuery, useUpdateUserRoleMutation, useToggleUserStatusMutation } from '@/hooks/useAdmin';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,7 +22,7 @@ const roleVariant: Record<string, { variant: 'default' | 'secondary' | 'outline'
 const roleLabels: Record<string, string> = {
   ADMIN: 'Admin',
   MANAGER: 'Manager',
-  USER: 'Utilisateur',
+  USER: 'User',
 };
 
 export default function AdminPage() {
@@ -56,12 +56,12 @@ export default function AdminPage() {
     return enabled ? (
       <Badge variant="default" className="bg-emerald-100 text-emerald-700 border-emerald-200">
         <CheckCircle className="h-3 w-3 mr-1" />
-        Actif
+        Active
       </Badge>
     ) : (
       <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
         <XCircle className="h-3 w-3 mr-1" />
-        Désactivé
+        Disabled
       </Badge>
     );
   };
@@ -86,7 +86,7 @@ export default function AdminPage() {
             Administration
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Gestion des utilisateurs et des rôles
+            User and role management
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export default function AdminPage() {
           <Card className="border-destructive/50">
             <CardContent className="p-6 text-center">
               <p className="text-destructive">
-                Erreur lors du chargement des utilisateurs
+                Error loading users
               </p>
             </CardContent>
           </Card>
@@ -121,7 +121,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-2 mb-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {users?.length ?? 0} utilisateur{users?.length !== 1 ? 's' : ''} inscrit{users?.length !== 1 ? 's' : ''}
+                {users?.length ?? 0} user{users?.length !== 1 ? 's' : ''} registered
               </span>
             </div>
 
@@ -138,7 +138,7 @@ export default function AdminPage() {
                             <Users className="h-5 w-5 text-muted-foreground" />
                           </div>
 
-                          {/* Info utilisateur */}
+                          {/* User info */}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">
                               {user.firstName} {user.lastName}
@@ -149,7 +149,7 @@ export default function AdminPage() {
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
 
-                          {/* Rôle */}
+                          {/* Role */}
                           <div className="flex items-center gap-2">
                             <Badge variant={role.variant} className={role.className}>
                               {roleLabels[user.role] || user.role}
@@ -160,13 +160,13 @@ export default function AdminPage() {
                               disabled={updateRoleMutation.isPending}
                               className="h-8 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                             >
-                              <option value="USER">Utilisateur</option>
+                              <option value="USER">User</option>
                               <option value="MANAGER">Manager</option>
                               <option value="ADMIN">Admin</option>
                             </select>
                           </div>
 
-                          {/* Statut + Actions */}
+                          {/* Status + Actions */}
                           <div className="flex items-center gap-2">
                             {formatUserStatus(user.enabled)}
                             <Button
@@ -189,12 +189,12 @@ export default function AdminPage() {
                               {user.enabled ? (
                                 <>
                                   <XCircle className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Désactiver</span>
+                                  <span className="hidden sm:inline">Disable</span>
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Activer</span>
+                                  <span className="hidden sm:inline">Enable</span>
                                 </>
                               )}
                             </Button>
@@ -208,7 +208,7 @@ export default function AdminPage() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground">Aucun utilisateur inscrit</p>
+                    <p className="text-muted-foreground">No registered users</p>
                   </CardContent>
                 </Card>
               )}
@@ -221,18 +221,18 @@ export default function AdminPage() {
         isOpen={!!confirmTarget}
         title={
           confirmTarget?.currentStatus
-            ? 'Désactiver l\'utilisateur'
-            : 'Réactiver l\'utilisateur'
+            ? 'Disable user'
+            : 'Re-enable user'
         }
         message={
           confirmTarget
             ? confirmTarget.currentStatus
-              ? `Voulez-vous vraiment désactiver l'utilisateur @${confirmTarget.username} ? Il ne pourra plus se connecter.`
-              : `Voulez-vous vraiment réactiver l'utilisateur @${confirmTarget.username} ?`
+              ? `Are you sure you want to disable user @${confirmTarget.username}? They will not be able to log in.`
+              : `Are you sure you want to re-enable user @${confirmTarget.username}?`
             : ''
         }
         confirmLabel={
-          confirmTarget?.currentStatus ? 'Désactiver' : 'Réactiver'
+          confirmTarget?.currentStatus ? 'Disable' : 'Enable'
         }
         onConfirm={handleToggleStatus}
         onCancel={() => setConfirmTarget(null)}

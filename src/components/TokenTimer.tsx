@@ -8,24 +8,21 @@ interface TokenTimerProps {
   expiry: number | null;
 }
 
+function computeRemaining(expiry: number | null): string {
+  if (!expiry) return '--:--';
+  const diff = expiry - Date.now();
+  if (diff <= 0) return 'Expired';
+  const minutes = Math.floor(diff / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 function TokenTimerInner({ expiry }: TokenTimerProps) {
-  const [remaining, setRemaining] = useState<string>('');
+  const [remaining, setRemaining] = useState<string>(() => computeRemaining(expiry));
 
   useEffect(() => {
-    if (!expiry) {
-      setRemaining('--:--');
-      return;
-    }
-
     const update = () => {
-      const diff = expiry - Date.now();
-      if (diff <= 0) {
-        setRemaining('Expiré');
-        return;
-      }
-      const minutes = Math.floor(diff / 60000);
-      const seconds = Math.floor((diff % 60000) / 1000);
-      setRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      setRemaining(computeRemaining(expiry));
     };
 
     update();
@@ -33,7 +30,7 @@ function TokenTimerInner({ expiry }: TokenTimerProps) {
     return () => clearInterval(interval);
   }, [expiry]);
 
-  const isExpired = remaining === 'Expiré';
+  const isExpired = remaining === 'Expired';
   const isLow = !isExpired && remaining !== '--:--' && parseInt(remaining.split(':')[0]) < 5;
 
   return (
@@ -44,7 +41,7 @@ function TokenTimerInner({ expiry }: TokenTimerProps) {
         isLow ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
         'bg-muted text-muted-foreground'
       }`}
-      title="Temps restant du token d'accès"
+      title="Access token time remaining"
     >
       <KeyRound className="h-3 w-3" />
       {remaining}

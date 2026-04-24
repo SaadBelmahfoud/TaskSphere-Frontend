@@ -64,18 +64,6 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
         title: data.title?.trim() as string,
         description: data.description?.trim() || undefined,
         priority: data.priority || undefined,
-        // CORRECTION : Ne pas envoyer dueDate si c'est une chaîne vide.
-        // ──────────────────────────────────────────────────────
-        // AVANT : dueDate: data.dueDate || undefined
-        //   → Si data.dueDate = "", le || renvoie undefined (OK)
-        //   → Mais si data.dueDate = "2024-01-01" (valide), ça passe
-        //   → Cependant, le type TaskCreateRequest.dueDate est optionnel
-        //   → Et un string vide "" n'est PAS une date valide pour Jackson
-        //   → Le backend Java attend un LocalDate (ou null) et Jackson
-        //     ne peut pas parser "" en LocalDate → 400 Bad Request
-        //
-        // APRÈS : On filtre les chaînes vides ET on ne garde que
-        //   les valeurs réellement renseignées (format yyyy-MM-dd)
         dueDate: (data.dueDate && data.dueDate.trim() !== '') ? data.dueDate.trim() : undefined,
       };
 
@@ -94,21 +82,21 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
   };
 
   const priorities = [
-    { value: 'LOW', label: 'Basse', className: 'bg-slate-100 text-slate-600 border-slate-200' },
-    { value: 'MEDIUM', label: 'Moyenne', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-    { value: 'HIGH', label: 'Haute', className: 'bg-orange-100 text-orange-700 border-orange-200' },
-    { value: 'CRITICAL', label: 'Critique', className: 'bg-red-100 text-red-700 border-red-200' },
+    { value: 'LOW', label: 'Low', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+    { value: 'MEDIUM', label: 'Medium', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+    { value: 'HIGH', label: 'High', className: 'bg-orange-100 text-orange-700 border-orange-200' },
+    { value: 'CRITICAL', label: 'Critical', className: 'bg-red-100 text-red-700 border-red-200' },
   ];
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="task-title">Titre *</Label>
+        <Label htmlFor="task-title">Title *</Label>
         <Input
           id="task-title"
           type="text"
           {...register('title')}
-          placeholder="Titre de la tâche"
+          placeholder="Task title"
         />
         {errors.title && (
           <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
@@ -122,7 +110,7 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
           {...register('description')}
           maxLength={5000}
           rows={3}
-          placeholder="Description détaillée (optionnel)"
+          placeholder="Detailed description (optional)"
           className="resize-none"
         />
         {errors.description && (
@@ -131,7 +119,7 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
       </div>
 
       <div className="space-y-2">
-        <Label>Priorité</Label>
+        <Label>Priority</Label>
         <div className="flex gap-2 flex-wrap">
           {priorities.map((p) => (
             <button
@@ -151,7 +139,7 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="task-date">Date d&apos;échéance</Label>
+        <Label htmlFor="task-date">Due date</Label>
         <Input
           id="task-date"
           type="date"
@@ -162,16 +150,16 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={isLoading} className="flex-1">
           {isLoading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Enregistrement...</>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
           ) : mode === 'create' ? (
-            'Créer la tâche'
+            'Create task'
           ) : (
-            'Mettre à jour'
+            'Update'
           )}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
+            Cancel
           </Button>
         )}
       </div>

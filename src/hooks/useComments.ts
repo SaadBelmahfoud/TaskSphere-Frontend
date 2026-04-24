@@ -10,7 +10,7 @@ export const commentKeys = {
   taskComments: (taskId: string) => [...commentKeys.byTask(), taskId] as const,
 };
 
-// ===== Fonctions API =====
+// ===== API functions =====
 
 export async function getTaskComments(taskId: string): Promise<CommentResponse[]> {
   const response = await api.get<CommentResponse[]>(`/tasks/${taskId}/comments`);
@@ -29,7 +29,7 @@ export async function deleteComment(commentId: string): Promise<void> {
   await api.delete(`/comments/${commentId}`);
 }
 
-// ===== Hooks TanStack Query =====
+// ===== TanStack Query Hooks =====
 
 export function useTaskCommentsQuery(taskId: string) {
   return useQuery({
@@ -46,11 +46,11 @@ export function useCreateCommentMutation(taskId: string) {
     mutationFn: (data: CommentCreateRequest) => createComment(taskId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: commentKeys.taskComments(taskId) });
-      toast.success('Commentaire ajouté');
+      toast.success('Comment added');
     },
     onError: (error) => {
-      toast.error("Erreur lors de l'ajout du commentaire", {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error adding comment', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -62,11 +62,11 @@ export function useDeleteCommentMutation(taskId: string) {
     mutationFn: deleteComment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: commentKeys.taskComments(taskId) });
-      toast.success('Commentaire supprimé');
+      toast.success('Comment deleted');
     },
     onError: (error) => {
-      toast.error('Erreur lors de la suppression du commentaire', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error deleting comment', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });

@@ -32,7 +32,7 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
   const handleSend = useCallback(async () => {
     const trimmed = content.trim();
     if (!trimmed) {
-      toast.error('Le commentaire ne peut pas être vide');
+      toast.error('Comment cannot be empty');
       return;
     }
     try {
@@ -68,7 +68,7 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
+    return new Date(dateStr).toLocaleDateString('en-US', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -83,7 +83,7 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
-            Commentaires
+            Comments
             {comments && (
               <Badge variant="secondary" className="ml-1 text-xs">
                 {comments.length}
@@ -92,19 +92,19 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Nouveau commentaire */}
+          {/* New comment */}
           <div className="space-y-2">
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Écrire un commentaire... (Ctrl+Entrée pour envoyer)"
+              placeholder="Write a comment... (Ctrl+Enter to send)"
               rows={3}
               className="resize-none"
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                Ctrl+Entrée pour envoyer
+                Ctrl+Enter to send
               </span>
               <Button
                 size="sm"
@@ -112,12 +112,12 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
                 disabled={!content.trim() || createMutation.isPending}
               >
                 <Send className="h-4 w-4 mr-1" />
-                Envoyer
+                Send
               </Button>
             </div>
           </div>
 
-          {/* Liste des commentaires */}
+          {/* Comments list */}
           <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
@@ -149,7 +149,7 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
                       </span>
                       {auth.email === comment.username && (
                         <Badge variant="outline" className="text-xs px-1.5 py-0">
-                          Vous
+                          You
                         </Badge>
                       )}
                       <span className="text-xs text-muted-foreground">
@@ -166,7 +166,7 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
                       size="icon"
                       className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       onClick={() => setDeleteTarget(comment.id)}
-                      title="Supprimer le commentaire"
+                      title="Delete comment"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -175,7 +175,7 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
               ))
             ) : (
               <p className="text-sm text-muted-foreground text-center py-6">
-                Aucun commentaire pour le moment
+                No comments yet
               </p>
             )}
           </div>
@@ -184,9 +184,9 @@ export default function CommentsSection({ taskId }: CommentsSectionProps) {
 
       <ConfirmDialog
         isOpen={!!deleteTarget}
-        title="Supprimer le commentaire"
-        message="Voulez-vous vraiment supprimer ce commentaire ? Cette action est irréversible."
-        confirmLabel="Supprimer"
+        title="Delete comment"
+        message="Are you sure you want to delete this comment? This action is irreversible."
+        confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         isLoading={deleteMutation.isPending}

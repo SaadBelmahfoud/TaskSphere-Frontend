@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // ===== Hydratation depuis localStorage au mount =====
+  // ===== Hydrate from localStorage on mount =====
   useEffect(() => {
     try {
       const stored = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ===== Mise à jour du state + localStorage =====
+  // ===== Update state + localStorage =====
   const updateAuth = useCallback((newAuth: AuthState) => {
     setAuth(newAuth);
     if (newAuth.isAuthenticated) {
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ===== Nettoyage du cache React Query =====
+  // ===== Clear React Query cache =====
   const clearQueryCache = useCallback(() => {
     try {
       window.dispatchEvent(new CustomEvent('auth-change', { detail: { clearCache: true } }));
@@ -80,8 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ===== Callback de refresh token =====
-  // CRITICAL: utilise refreshApi (SANS intercepteur Bearer) pour appeler /auth/refresh
+  // ===== Refresh token callback =====
   useEffect(() => {
     setRefreshCallback(async () => {
       try {
@@ -91,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(stored) as AuthState;
         if (!parsed.refreshToken) return null;
 
-        // Utiliser refreshApi (instance SÉPARÉE, SANS intercepteur Bearer)
+        // Use refreshApi (SEPARATE instance, WITHOUT Bearer interceptor)
         const response = await refreshApi.post<LoginResponse>('/auth/refresh', {
           refreshToken: parsed.refreshToken,
         });
@@ -137,10 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } satisfies LoginRequest);
 
       if (!response.data?.accessToken || !response.data?.refreshToken) {
-        throw new Error('Réponse de login invalide: token manquant');
+        throw new Error('Invalid login response: missing token');
       }
 
-      // Décoder le JWT pour extraire email + rôle
+      // Decode JWT to extract email + role
       let emailFromToken = email;
       let roleFromToken = 'USER';
       try {
@@ -164,18 +163,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       clearQueryCache();
       updateAuth(newAuth);
-      toast.success(`Bienvenue, ${emailFromToken} !`, {
-        description: `Connecté en tant que ${roleFromToken}`,
+      toast.success(`Welcome, ${emailFromToken}!`, {
+        description: `Logged in as ${roleFromToken}`,
       });
       router.push('/dashboard');
     } catch (err: unknown) {
       const message = isApiError(err)
-        ? err.response.data.error || err.response.data.message || 'Erreur serveur'
+        ? err.response.data.error || err.response.data.message || 'Server error'
         : err instanceof Error
           ? err.message
-          : 'Erreur de connexion au serveur';
+          : 'Connection error';
       setError(message);
-      toast.error('Échec de la connexion', { description: message });
+      toast.error('Login failed', { description: message });
       throw new Error(message);
     } finally {
       setIsLoading(false);
@@ -186,17 +185,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       if (auth.refreshToken) {
-        // Utiliser refreshApi pour le logout aussi (pas besoin de Bearer)
         await refreshApi.post('/auth/logout', {
           refreshToken: auth.refreshToken,
         });
       }
     } catch {
-      // Le serveur peut être injoignable, on nettoie quand même
+      // Server might be unreachable, clean up anyway
     } finally {
       clearQueryCache();
       updateAuth(defaultAuth);
-      toast.info('Déconnecté', { description: 'À bientôt !' });
+      toast.info('Logged out', { description: 'See you soon!' });
       router.push('/');
     }
   }, [auth.refreshToken, router, updateAuth, clearQueryCache]);
