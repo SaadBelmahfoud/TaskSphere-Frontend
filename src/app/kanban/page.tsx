@@ -278,7 +278,7 @@ export default function KanbanPage() {
 
     // Mettre à jour le statut si la colonne a changé
     if (targetColumn && targetColumn !== draggedTask.status) {
-      updateStatusMutation.mutateAsync({
+      updateStatusMutation.mutate({
         id: draggedTask.id,
         status: targetColumn,
       });

@@ -64,7 +64,19 @@ export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoad
         title: data.title?.trim() as string,
         description: data.description?.trim() || undefined,
         priority: data.priority || undefined,
-        dueDate: data.dueDate || undefined,
+        // CORRECTION : Ne pas envoyer dueDate si c'est une chaîne vide.
+        // ──────────────────────────────────────────────────────
+        // AVANT : dueDate: data.dueDate || undefined
+        //   → Si data.dueDate = "", le || renvoie undefined (OK)
+        //   → Mais si data.dueDate = "2024-01-01" (valide), ça passe
+        //   → Cependant, le type TaskCreateRequest.dueDate est optionnel
+        //   → Et un string vide "" n'est PAS une date valide pour Jackson
+        //   → Le backend Java attend un LocalDate (ou null) et Jackson
+        //     ne peut pas parser "" en LocalDate → 400 Bad Request
+        //
+        // APRÈS : On filtre les chaînes vides ET on ne garde que
+        //   les valeurs réellement renseignées (format yyyy-MM-dd)
+        dueDate: (data.dueDate && data.dueDate.trim() !== '') ? data.dueDate.trim() : undefined,
       };
 
       await onSubmit(payload);

@@ -43,7 +43,7 @@ export default function ConfirmDialog({
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isLoading}>
             {isLoading ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Suppression...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {confirmLabel}...</>
             ) : (
               confirmLabel
             )}

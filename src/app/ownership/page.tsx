@@ -25,7 +25,6 @@ export default function OwnershipPage() {
   const { auth } = useAuth();
   const [results, setResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
   const addResult = (test: string, status: 'success' | 'failure', detail: string) => {
     setResults((prev) => [...prev, { test, status, detail }]);
@@ -34,7 +33,9 @@ export default function OwnershipPage() {
   const runOwnershipTests = async () => {
     setIsRunning(true);
     setResults([]);
-    setCreatedTaskId(null);
+
+    // Use a local variable to avoid stale React state in the async flow
+    let createdTaskId: string | null = null;
 
     const timestamp = Date.now();
 
@@ -45,7 +46,7 @@ export default function OwnershipPage() {
         description: 'Tâche créée pour tester l\'ownership',
         priority: 'HIGH',
       } satisfies TaskCreateRequest);
-      setCreatedTaskId(task.id);
+      createdTaskId = task.id;
       addResult(
         '1. Création de tâche',
         'success',
@@ -97,7 +98,7 @@ export default function OwnershipPage() {
       try {
         await deleteTask(createdTaskId);
         addResult('6. Soft delete de MA tâche', 'success', 'Tâche archivée avec succès');
-        setCreatedTaskId(null);
+        createdTaskId = null;
       } catch {
         addResult('6. Soft delete', 'failure', 'Échec de la suppression');
       }

@@ -16,14 +16,12 @@ export async function getAllUsers(): Promise<UserAdminResponse[]> {
   return response.data;
 }
 
-export async function updateUserRole(userId: string, role: string): Promise<UserAdminResponse> {
-  const response = await api.patch<UserAdminResponse>(`/iam/admin/users/${userId}/role`, { role });
-  return response.data;
+export async function updateUserRole(userId: string, role: string): Promise<void> {
+  await api.patch(`/iam/admin/users/${userId}/role`, { role });
 }
 
-export async function toggleUserStatus(userId: string): Promise<UserAdminResponse> {
-  const response = await api.patch<UserAdminResponse>(`/iam/admin/users/${userId}/toggle`);
-  return response.data;
+export async function toggleUserStatus(userId: string): Promise<void> {
+  await api.patch(`/iam/admin/users/${userId}/toggle`);
 }
 
 // ===== Hooks TanStack Query =====

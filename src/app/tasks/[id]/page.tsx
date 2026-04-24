@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
+import { useAuth } from '@/context/AuthContext';
 import TaskForm from '@/components/TaskForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import CommentsSection from '@/components/CommentsSection';
@@ -21,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Pencil, Trash2, UserPlus, UserX } from 'lucide-react';
 import { toast } from 'sonner';
+import { parseLocalDate } from '@/lib/utils';
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string; label: string }> = {
   TODO: { variant: 'secondary', className: 'bg-gray-100 text-gray-700 border-gray-200', label: 'À faire' },
@@ -101,17 +103,9 @@ export default function TaskDetailPage() {
     }
   };
 
-  // Vérifie si l'utilisateur courant est ADMIN ou MANAGER
-  // On lit depuis localStorage car le rôle est stocké dans le state d'auth
-  const currentUserRole = typeof window !== 'undefined'
-    ? (() => {
-        try {
-          const stored = localStorage.getItem('tasksphere_auth');
-          if (!stored) return 'USER';
-          return JSON.parse(stored).role || 'USER';
-        } catch { return 'USER'; }
-      })()
-    : 'USER';
+  // Vérifie si l'utilisateur courant est ADMIN ou MANAGER via AuthContext
+  const { auth: userAuth } = useAuth();
+  const currentUserRole = userAuth.role || 'USER';
   const canAssign = currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER';
 
   const formatDate = (dateStr: string | null) => {
@@ -308,7 +302,7 @@ export default function TaskDetailPage() {
                 <dt className="text-muted-foreground">Échéance</dt>
                 <dd className="text-foreground mt-0.5">
                   {task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString('fr-FR', {
+                    ? parseLocalDate(task.dueDate).toLocaleDateString('fr-FR', {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric',

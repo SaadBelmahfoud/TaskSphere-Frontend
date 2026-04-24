@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Eye, ArrowRight, Trash2, UserCheck } from 'lucide-react';
+import { parseLocalDate } from '@/lib/utils';
 
 interface TaskCardProps {
   task: TaskResponse;
@@ -34,7 +35,7 @@ function TaskCardInner({ task, onView, onStatusChange, onDelete }: TaskCardProps
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return null;
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
+    return parseLocalDate(dateStr).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
