@@ -7,13 +7,16 @@ import { useTheme } from 'next-themes';
 import TokenTimer from './TokenTimer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, ClipboardList, Shield, Columns3, Sun, Moon } from 'lucide-react';
+import { LogOut, ClipboardList, Shield, Columns3, Sun, Moon, BarChart3, ShieldCheck } from 'lucide-react';
 
 const navItems = [
-  { label: 'Mes Tâches', href: '/tasks', icon: ClipboardList },
+  { label: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+  { label: 'My Tasks', href: '/tasks', icon: ClipboardList },
   { label: 'Kanban', href: '/kanban', icon: Columns3 },
-  { label: 'Test Ownership', href: '/ownership', icon: Shield },
+  { label: 'Ownership', href: '/ownership', icon: Shield },
 ];
+
+const adminNavItem = { label: 'Admin', href: '/admin', icon: ShieldCheck };
 
 function NavbarInner() {
   const { auth, logout } = useAuth();
@@ -57,6 +60,22 @@ function NavbarInner() {
                   </Button>
                 );
               })}
+              {auth.role === 'ADMIN' && (() => {
+                const Icon = adminNavItem.icon;
+                const isActive = pathname === adminNavItem.href;
+                return (
+                  <Button
+                    key={adminNavItem.href}
+                    variant={isActive ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => router.push(adminNavItem.href)}
+                    className={isActive ? 'text-primary' : 'text-red-600 hover:text-red-700'}
+                  >
+                    <Icon className="h-4 w-4 mr-1.5" />
+                    {adminNavItem.label}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
 
@@ -68,11 +87,11 @@ function NavbarInner() {
               size="icon"
               onClick={toggleTheme}
               className="h-8 w-8"
-              title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Changer de thème</span>
+              <span className="sr-only">Toggle theme</span>
             </Button>
 
             <div className="hidden sm:flex flex-col items-end">
@@ -84,7 +103,7 @@ function NavbarInner() {
 
             <Button variant="outline" size="sm" onClick={handleLogout} className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive">
               <LogOut className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Déconnexion</span>
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
@@ -106,6 +125,22 @@ function NavbarInner() {
               </Button>
             );
           })}
+          {auth.role === 'ADMIN' && (() => {
+            const Icon = adminNavItem.icon;
+            const isActive = pathname === adminNavItem.href;
+            return (
+              <Button
+                key={adminNavItem.href}
+                variant={isActive ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => router.push(adminNavItem.href)}
+                className={`flex-1 text-xs ${isActive ? 'text-primary' : 'text-red-600 hover:text-red-700'}`}
+              >
+                <Icon className="h-4 w-4 mr-1" />
+                {adminNavItem.label}
+              </Button>
+            );
+          })()}
         </div>
       </div>
     </nav>

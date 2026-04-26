@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
+import { useAuth } from '@/context/AuthContext';
 import TaskForm from '@/components/TaskForm';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import CommentsSection from '@/components/CommentsSection';
 import {
   useTaskQuery,
   useUpdateTaskMutation,
@@ -20,18 +22,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Pencil, Trash2, UserPlus, UserX } from 'lucide-react';
 import { toast } from 'sonner';
+import { parseLocalDate } from '@/lib/utils';
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string; label: string }> = {
-  TODO: { variant: 'secondary', className: 'bg-gray-100 text-gray-700 border-gray-200', label: 'À faire' },
-  DOING: { variant: 'outline', className: 'bg-blue-50 text-blue-700 border-blue-200', label: 'En cours' },
-  DONE: { variant: 'default', className: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Terminé' },
+  TODO: { variant: 'secondary', className: 'bg-gray-100 text-gray-700 border-gray-200', label: 'To Do' },
+  DOING: { variant: 'outline', className: 'bg-sky-50 text-sky-700 border-sky-200', label: 'In Progress' },
+  DONE: { variant: 'default', className: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Done' },
 };
 
 const priorityConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string; label: string }> = {
-  LOW: { variant: 'outline', className: 'bg-slate-100 text-slate-600 border-slate-200', label: 'Basse' },
-  MEDIUM: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Moyenne' },
-  HIGH: { variant: 'outline', className: 'bg-orange-100 text-orange-700 border-orange-200', label: 'Haute' },
-  CRITICAL: { variant: 'destructive', className: 'bg-red-100 text-red-700 border-red-200', label: 'Critique' },
+  LOW: { variant: 'outline', className: 'bg-slate-100 text-slate-600 border-slate-200', label: 'Low' },
+  MEDIUM: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Medium' },
+  HIGH: { variant: 'outline', className: 'bg-orange-100 text-orange-700 border-orange-200', label: 'High' },
+  CRITICAL: { variant: 'destructive', className: 'bg-red-100 text-red-700 border-red-200', label: 'Critical' },
 };
 
 export default function TaskDetailPage() {
@@ -63,30 +66,18 @@ export default function TaskDetailPage() {
     router.push('/tasks');
   };
 
-  /**
-   * CORRECTION — Fonctionnalité d'assignation de tâche
-   *
-   * RBAC : Seuls ADMIN et MANAGER peuvent assigner des tâches.
-   * Le bouton d'assignation n'est visible que pour ces rôles.
-   *
-   * FLUX :
-   * 1. Saisir l'email de l'assignataire
-   * 2. Cliquer "Assigner" → PATCH /tasks/{id}/assign { assigneeId: "email" }
-   * 3. Le backend vérifie les permissions et l'existence de l'utilisateur
-   * 4. Pour désassigner : cliquer "Retirer" avec un champ vide
-   */
   const handleAssign = async () => {
     if (!assigneeEmail.trim()) {
-      toast.error("Veuillez saisir l'email de l'assignataire");
+      toast.error('Please enter the assignee email');
       return;
     }
     try {
       await assignMutation.mutateAsync({ id, assigneeId: assigneeEmail.trim() });
       setAssigneeEmail('');
-      toast.success('Tâche assignée avec succès');
+      toast.success('Task assigned successfully');
     } catch {
-      toast.error("Impossible d'assigner la tâche", {
-        description: "Vérifiez que l'email est correct et que l'utilisateur existe",
+      toast.error('Unable to assign task', {
+        description: 'Check that the email is correct and the user exists',
       });
     }
   };
@@ -94,28 +85,19 @@ export default function TaskDetailPage() {
   const handleUnassign = async () => {
     try {
       await assignMutation.mutateAsync({ id, assigneeId: '' });
-      toast.success('Assignation retirée');
+      toast.success('Assignment removed');
     } catch {
-      toast.error("Impossible de retirer l'assignation");
+      toast.error('Unable to remove assignment');
     }
   };
 
-  // Vérifie si l'utilisateur courant est ADMIN ou MANAGER
-  // On lit depuis localStorage car le rôle est stocké dans le state d'auth
-  const currentUserRole = typeof window !== 'undefined'
-    ? (() => {
-        try {
-          const stored = localStorage.getItem('tasksphere_auth');
-          if (!stored) return 'USER';
-          return JSON.parse(stored).role || 'USER';
-        } catch { return 'USER'; }
-      })()
-    : 'USER';
+  const { auth: userAuth } = useAuth();
+  const currentUserRole = userAuth.role || 'USER';
   const canAssign = currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER';
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
+    if (!dateStr) return '\u2014';
+    return new Date(dateStr).toLocaleDateString('en-US', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
@@ -182,14 +164,14 @@ export default function TaskDetailPage() {
       <AppLayout>
         <div className="text-center py-16">
           <h3 className="text-lg font-medium text-foreground mb-2">
-            {isError ? 'Erreur lors du chargement' : 'Tâche non trouvée'}
+            {isError ? 'Error loading task' : 'Task not found'}
           </h3>
           <p className="text-muted-foreground mb-4">
-            {error instanceof Error ? error.message : 'La tâche demandée n\'existe pas ou vous n\'y avez pas accès.'}
+            {error instanceof Error ? error.message : 'The requested task does not exist or you do not have access.'}
           </p>
           <Button variant="outline" onClick={() => router.push('/tasks')}>
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Retour aux tâches
+            Back to tasks
           </Button>
         </div>
       </AppLayout>
@@ -203,7 +185,7 @@ export default function TaskDetailPage() {
     <AppLayout>
       <Button variant="ghost" size="sm" onClick={() => router.push('/tasks')} className="mb-6 text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4 mr-1" />
-        Retour aux tâches
+        Back to tasks
       </Button>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -211,7 +193,7 @@ export default function TaskDetailPage() {
           <div className="bg-card rounded-xl border shadow-sm p-6">
             {isEditing ? (
               <div>
-                <h2 className="text-lg font-semibold text-foreground mb-4">Modifier la tâche</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-4">Edit Task</h2>
                 <TaskForm
                   mode="edit"
                   initialData={{
@@ -241,7 +223,7 @@ export default function TaskDetailPage() {
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                     <Pencil className="h-4 w-4 mr-1" />
-                    Modifier
+                    Edit
                   </Button>
                 </div>
 
@@ -251,14 +233,14 @@ export default function TaskDetailPage() {
                     <p className="text-sm text-foreground whitespace-pre-wrap">{task.description}</p>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic mt-4">Aucune description</p>
+                  <p className="text-sm text-muted-foreground italic mt-4">No description</p>
                 )}
               </>
             )}
           </div>
 
           <div className="bg-card rounded-xl border shadow-sm p-6">
-            <h2 className="text-sm font-medium text-muted-foreground mb-3">Changer le statut</h2>
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">Change Status</h2>
             <div className="flex gap-2 flex-wrap">
               {Object.entries(statusConfig).map(([key, cfg]) => (
                 <Button
@@ -277,64 +259,64 @@ export default function TaskDetailPage() {
         </div>
 
         <div className="space-y-6">
-          {/* Détails */}
+          {/* Details */}
           <div className="bg-card rounded-xl border shadow-sm p-6">
-            <h2 className="text-sm font-medium text-muted-foreground mb-4">Détails</h2>
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">Details</h2>
             <dl className="space-y-3 text-sm">
               <div>
                 <dt className="text-muted-foreground">ID</dt>
                 <dd className="text-foreground font-mono text-xs mt-0.5 break-all">{task.id}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Propriétaire (userId)</dt>
+                <dt className="text-muted-foreground">Owner (userId)</dt>
                 <dd className="text-foreground font-mono text-xs mt-0.5 break-all">{task.userId}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Assignataire</dt>
+                <dt className="text-muted-foreground">Assignee</dt>
                 <dd className="text-foreground mt-0.5">
                   {task.assigneeId ? (
                     <Badge variant="secondary">{task.assigneeId}</Badge>
                   ) : (
-                    <span className="text-muted-foreground italic">Non assignée</span>
+                    <span className="text-muted-foreground italic">Unassigned</span>
                   )}
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Créée le</dt>
+                <dt className="text-muted-foreground">Created</dt>
                 <dd className="text-foreground mt-0.5">{formatDate(task.createdAt)}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Échéance</dt>
+                <dt className="text-muted-foreground">Due Date</dt>
                 <dd className="text-foreground mt-0.5">
                   {task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString('fr-FR', {
+                    ? parseLocalDate(task.dueDate).toLocaleDateString('en-US', {
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric',
                       })
-                    : '—'}
+                    : '\u2014'}
                 </dd>
               </div>
               {task.completedAt && (
                 <div>
-                  <dt className="text-muted-foreground">Terminée le</dt>
+                  <dt className="text-muted-foreground">Completed</dt>
                   <dd className="text-foreground mt-0.5">{formatDate(task.completedAt)}</dd>
                 </div>
               )}
             </dl>
           </div>
 
-          {/* CORRECTION — Section d'assignation (ADMIN/MANAGER uniquement) */}
+          {/* Assignment section (ADMIN/MANAGER only) */}
           {canAssign && (
             <div className="bg-card rounded-xl border shadow-sm p-6">
               <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
                 <UserPlus className="h-4 w-4" />
-                Assignation
+                Assignment
               </h2>
               <p className="text-xs text-muted-foreground mb-3">
                 {task.assigneeId
-                  ? `Cette tâche est assignée à ${task.assigneeId}`
-                  : 'Cette tâche n\'est assignée à personne'}
+                  ? `This task is assigned to ${task.assigneeId}`
+                  : 'This task is not assigned to anyone'}
               </p>
 
               <div className="flex gap-2">
@@ -352,7 +334,7 @@ export default function TaskDetailPage() {
                   className="shrink-0"
                 >
                   <UserPlus className="h-3.5 w-3.5 mr-1" />
-                  Assigner
+                  Assign
                 </Button>
               </div>
 
@@ -365,16 +347,16 @@ export default function TaskDetailPage() {
                   className="w-full mt-2 text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
                   <UserX className="h-3.5 w-3.5 mr-1" />
-                  Retirer l&apos;assignation
+                  Remove Assignment
                 </Button>
               )}
             </div>
           )}
 
-          {/* Zone de danger */}
+          {/* Danger zone */}
           <div className="bg-card rounded-xl border border-destructive/50 shadow-sm p-6">
-            <h2 className="text-sm font-medium text-destructive mb-2">Zone de danger</h2>
-            <p className="text-xs text-muted-foreground mb-3">La suppression est irréversible (soft delete).</p>
+            <h2 className="text-sm font-medium text-destructive mb-2">Danger Zone</h2>
+            <p className="text-xs text-muted-foreground mb-3">Deletion is irreversible (soft delete).</p>
             <Button
               variant="outline"
               size="sm"
@@ -382,7 +364,7 @@ export default function TaskDetailPage() {
               className="w-full text-destructive border-destructive/50 hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              Supprimer cette tâche
+              Delete this task
             </Button>
           </div>
         </div>
@@ -390,13 +372,15 @@ export default function TaskDetailPage() {
 
       <ConfirmDialog
         isOpen={showDelete}
-        title="Supprimer la tâche"
-        message={`Voulez-vous vraiment supprimer "${task.title}" ?`}
-        confirmLabel="Supprimer définitivement"
+        title="Delete task"
+        message={`Are you sure you want to delete "${task.title}"?`}
+        confirmLabel="Delete permanently"
         onConfirm={handleDelete}
         onCancel={() => setShowDelete(false)}
         isLoading={deleteMutation.isPending}
       />
+
+      <CommentsSection taskId={task.id} />
     </AppLayout>
   );
 }

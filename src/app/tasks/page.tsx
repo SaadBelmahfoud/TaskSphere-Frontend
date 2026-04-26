@@ -18,24 +18,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, ChevronLeft, ChevronRight, ClipboardList, Search, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Plus, X, ChevronLeft, ChevronRight, ClipboardList, Search, RotateCcw, SlidersHorizontal, RefreshCw, Loader2 } from 'lucide-react';
 
-/*
- * CORRECTION — Noms des champs de tri (snake_case → camelCase)
- * ────────────────────────────────────────────────────────────
- * PROBLÈME AVANT : Les valeurs 'created_at' et 'due_date' sont en snake_case.
- * Le backend Spring Data JPA attend les noms exacts des champs de l'entité
- * TaskEntity (camelCase Java : createdAt, dueDate, title, priority).
- * Sort.by(direction, "created_at") lève une PropertyReferenceException car
- * aucun champ "created_at" n'existe dans TaskEntity.
- *
- * SOLUTION : Utiliser les noms de champs JPA en camelCase.
- */
 const sortOptions = [
-  { value: 'createdAt', label: 'Date de création' },
-  { value: 'priority', label: 'Priorité' },
-  { value: 'dueDate', label: 'Date d\'échéance' },
-  { value: 'title', label: 'Titre' },
+  { value: 'createdAt', label: 'Created date' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'dueDate', label: 'Due date' },
+  { value: 'title', label: 'Title' },
 ] as const;
 
 export default function TasksPage() {
@@ -54,7 +43,7 @@ export default function TasksPage() {
     sortDir: 'desc',
   });
 
-  const { data: taskPage, isLoading } = useFilteredTasksQuery(filters, currentPage, 20);
+  const { data: taskPage, isLoading, isFetching, refetch } = useFilteredTasksQuery(filters, currentPage, 20);
   const createMutation = useCreateTaskMutation();
   const updateStatusMutation = useUpdateTaskStatusMutation();
   const deleteMutation = useDeleteTaskMutation();
@@ -65,7 +54,6 @@ export default function TasksPage() {
 
   const router = useRouter();
 
-  // Compter les filtres actifs (non vides)
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.keyword) count++;
@@ -116,13 +104,26 @@ export default function TasksPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" />
-            Mes Tâches
+            My Tasks
+            {isFetching && !isLoading && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {totalElements} tâche{totalElements !== 1 ? 's' : ''}
+            {totalElements} task{totalElements !== 1 ? 's' : ''} (owned + assigned to you)
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            onClick={() => refetch()}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Refresh task list"
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
           <Button
             onClick={() => setShowFilters(!showFilters)}
             variant={showFilters ? 'secondary' : 'outline'}
@@ -130,7 +131,7 @@ export default function TasksPage() {
             className="relative"
           >
             <SlidersHorizontal className="h-4 w-4 mr-1" />
-            Filtres
+            Filters
             {activeFilterCount > 0 && (
               <Badge variant="default" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center text-xs">
                 {activeFilterCount}
@@ -142,18 +143,18 @@ export default function TasksPage() {
             variant={showCreateForm ? 'outline' : 'default'}
             size="sm"
           >
-            {showCreateForm ? <><X className="h-4 w-4 mr-1" /> Annuler</> : <><Plus className="h-4 w-4 mr-1" /> Nouvelle tâche</>}
+            {showCreateForm ? <><X className="h-4 w-4 mr-1" /> Cancel</> : <><Plus className="h-4 w-4 mr-1" /> New Task</>}
           </Button>
         </div>
       </div>
 
-      {/* Barre de recherche */}
+      {/* Search bar */}
       <div className="mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Rechercher par titre..."
+            placeholder="Search by title..."
             value={filters.keyword || ''}
             onChange={(e) => handleFilterChange('keyword', e.target.value)}
             className="pl-9"
@@ -161,11 +162,11 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Panneau de filtres */}
+      {/* Filters panel */}
       {showFilters && (
         <div className="bg-card rounded-xl border shadow-sm p-4 mb-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Filtres et tri</h3>
+            <h3 className="text-sm font-semibold text-foreground">Filters & Sort</h3>
             {activeFilterCount > 0 && (
               <Button
                 variant="ghost"
@@ -174,46 +175,46 @@ export default function TasksPage() {
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="h-3 w-3 mr-1" />
-                Réinitialiser
+                Reset
               </Button>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Statut */}
+            {/* Status */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Statut</Label>
+              <Label className="text-xs text-muted-foreground">Status</Label>
               <select
                 value={filters.status || ''}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">Tous les statuts</option>
-                <option value="TODO">À faire</option>
-                <option value="DOING">En cours</option>
-                <option value="DONE">Terminé</option>
+                <option value="">All statuses</option>
+                <option value="TODO">To Do</option>
+                <option value="DOING">In Progress</option>
+                <option value="DONE">Done</option>
               </select>
             </div>
 
-            {/* Priorité */}
+            {/* Priority */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Priorité</Label>
+              <Label className="text-xs text-muted-foreground">Priority</Label>
               <select
                 value={filters.priority || ''}
                 onChange={(e) => handleFilterChange('priority', e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="">Toutes les priorités</option>
-                <option value="LOW">Basse</option>
-                <option value="MEDIUM">Moyenne</option>
-                <option value="HIGH">Haute</option>
-                <option value="CRITICAL">Critique</option>
+                <option value="">All priorities</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
               </select>
             </div>
 
-            {/* Date d'échéance début */}
+            {/* Due date from */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Échéance à partir de</Label>
+              <Label className="text-xs text-muted-foreground">Due from</Label>
               <Input
                 type="date"
                 value={filters.dueDateFrom || ''}
@@ -222,9 +223,9 @@ export default function TasksPage() {
               />
             </div>
 
-            {/* Date d'échéance fin */}
+            {/* Due date to */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Échéance jusqu&apos;au</Label>
+              <Label className="text-xs text-muted-foreground">Due until</Label>
               <Input
                 type="date"
                 value={filters.dueDateTo || ''}
@@ -234,9 +235,9 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Tri */}
+          {/* Sort */}
           <div className="flex items-center gap-3 flex-wrap">
-            <Label className="text-xs text-muted-foreground">Trier par</Label>
+            <Label className="text-xs text-muted-foreground">Sort by</Label>
             <div className="flex gap-2 flex-wrap">
               {sortOptions.map((opt) => (
                 <Button
@@ -256,7 +257,7 @@ export default function TasksPage() {
                   {opt.label}
                   {filters.sortBy === opt.value && (
                     <span className="ml-1">
-                      {filters.sortDir === 'desc' ? '↓' : '↑'}
+                      {filters.sortDir === 'desc' ? '\u2193' : '\u2191'}
                     </span>
                   )}
                 </Button>
@@ -268,7 +269,7 @@ export default function TasksPage() {
 
       {showCreateForm && (
         <div className="bg-card rounded-xl border shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Nouvelle tâche</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">New Task</h2>
           <TaskForm mode="create" onSubmit={handleCreate} isLoading={createMutation.isPending} />
         </div>
       )}
@@ -297,17 +298,22 @@ export default function TasksPage() {
         <div className="text-center py-16">
           <ClipboardList className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
           <h3 className="text-lg font-medium text-foreground mb-2">
-            {activeFilterCount > 0 ? 'Aucun résultat' : 'Aucune tâche'}
+            {activeFilterCount > 0 ? 'No results' : 'No tasks'}
           </h3>
           <p className="text-sm text-muted-foreground">
             {activeFilterCount > 0
-              ? 'Aucune tâche ne correspond à vos filtres.'
-              : 'Créez votre première tâche pour commencer !'}
+              ? 'No tasks match your filters.'
+              : 'Create your first task to get started!'}
           </p>
-          {activeFilterCount > 0 && (
+          {activeFilterCount > 0 ? (
             <Button variant="outline" size="sm" onClick={resetFilters} className="mt-4">
               <RotateCcw className="h-4 w-4 mr-1" />
-              Réinitialiser les filtres
+              Reset filters
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-4">
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
             </Button>
           )}
         </div>
@@ -329,13 +335,13 @@ export default function TasksPage() {
             <div className="flex justify-center items-center gap-2 mt-8">
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0}>
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Précédent
+                Previous
               </Button>
               <span className="text-sm text-muted-foreground px-3">
                 Page {currentPage + 1} / {totalPages}
               </span>
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages - 1}>
-                Suivant
+                Next
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
@@ -345,9 +351,9 @@ export default function TasksPage() {
 
       <ConfirmDialog
         isOpen={!!deleteId}
-        title="Supprimer la tâche"
-        message="Cette action est irréversible. La tâche sera archivée (soft delete)."
-        confirmLabel="Supprimer"
+        title="Delete task"
+        message="This action is irreversible. The task will be archived (soft delete) and will no longer appear in your task list."
+        confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
         isLoading={deleteMutation.isPending}

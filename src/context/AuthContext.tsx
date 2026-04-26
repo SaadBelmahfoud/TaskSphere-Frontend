@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import api, { setRefreshCallback, setTokenUpdateCallback } from '@/lib/api';
+import api, { setRefreshCallback, setTokenUpdateCallback, refreshApi } from '@/lib/api';
 import { isApiError } from '@/types';
 import { AuthState, LoginRequest, LoginResponse } from '@/types';
 
@@ -34,39 +34,44 @@ const AuthContext = createContext<AuthContextType>({
   clearError: () => {},
 });
 
+const AUTH_STORAGE_KEY = 'tasksphere_auth';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState>(defaultAuth);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // ===== Hydrate from localStorage on mount =====
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('tasksphere_auth');
+      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as AuthState;
         if (parsed.accessToken && parsed.tokenExpiry && parsed.tokenExpiry > Date.now()) {
           setAuth(parsed);
         } else {
-          localStorage.removeItem('tasksphere_auth');
+          localStorage.removeItem(AUTH_STORAGE_KEY);
         }
       }
     } catch {
-      localStorage.removeItem('tasksphere_auth');
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // ===== Update state + localStorage =====
   const updateAuth = useCallback((newAuth: AuthState) => {
     setAuth(newAuth);
     if (newAuth.isAuthenticated) {
-      localStorage.setItem('tasksphere_auth', JSON.stringify(newAuth));
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newAuth));
     } else {
-      localStorage.removeItem('tasksphere_auth');
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, []);
 
+  // ===== Clear React Query cache =====
   const clearQueryCache = useCallback(() => {
     try {
       window.dispatchEvent(new CustomEvent('auth-change', { detail: { clearCache: true } }));
@@ -75,26 +80,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // ===== Refresh token callback =====
   useEffect(() => {
     setRefreshCallback(async () => {
       try {
-        const stored = localStorage.getItem('tasksphere_auth');
+        const stored = localStorage.getItem(AUTH_STORAGE_KEY);
         if (!stored) return null;
+
         const parsed = JSON.parse(stored) as AuthState;
         if (!parsed.refreshToken) return null;
 
-        const response = await api.post<LoginResponse>('/auth/refresh', {
+        // Use refreshApi (SEPARATE instance, WITHOUT Bearer interceptor)
+        const response = await refreshApi.post<LoginResponse>('/auth/refresh', {
           refreshToken: parsed.refreshToken,
         });
 
+        if (!response.data?.accessToken) return null;
+
+        const expiresInMs = parseInt(response.data.expiresIn, 10) * 1000 || 3600_000;
         const newAuth: AuthState = {
           accessToken: response.data.accessToken,
           refreshToken: response.data.refreshToken,
           email: parsed.email,
           role: parsed.role,
           isAuthenticated: true,
-          tokenExpiry: Date.now() + parseInt(response.data.expiresIn) * 1000,
+          tokenExpiry: Date.now() + expiresInMs,
         };
+
         updateAuth(newAuth);
         return newAuth;
       } catch {
@@ -112,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [updateAuth]);
 
+  // ===== LOGIN =====
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
@@ -122,57 +135,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       } satisfies LoginRequest);
 
+      if (!response.data?.accessToken || !response.data?.refreshToken) {
+        throw new Error('Invalid login response: missing token');
+      }
+
+      // Decode JWT to extract email + role
       let emailFromToken = email;
       let roleFromToken = 'USER';
-
       try {
-        const payload = JSON.parse(atob(response.data.accessToken.split('.')[1]));
+        const base64Payload = response.data.accessToken.split('.')[1];
+        const payload = JSON.parse(atob(base64Payload));
         emailFromToken = payload.sub || email;
         roleFromToken = payload.role || 'USER';
       } catch {
         // JWT decode failed, keep defaults
       }
 
+      const expiresInMs = parseInt(response.data.expiresIn, 10) * 1000 || 3600_000;
       const newAuth: AuthState = {
         accessToken: response.data.accessToken,
         refreshToken: response.data.refreshToken,
         email: emailFromToken,
         role: roleFromToken,
         isAuthenticated: true,
-        tokenExpiry: Date.now() + parseInt(response.data.expiresIn) * 1000,
+        tokenExpiry: Date.now() + expiresInMs,
       };
 
       clearQueryCache();
       updateAuth(newAuth);
-      toast.success(`Bienvenue, ${emailFromToken} !`, {
-        description: `Connecté en tant que ${roleFromToken}`,
+      toast.success(`Welcome, ${emailFromToken}!`, {
+        description: `Logged in as ${roleFromToken}`,
       });
-      router.push('/tasks');
+      router.push('/dashboard');
     } catch (err: unknown) {
       const message = isApiError(err)
-        ? err.response.data.error || err.response.data.message || 'Erreur serveur'
-        : 'Erreur de connexion au serveur';
+        ? err.response.data.error || err.response.data.message || 'Server error'
+        : err instanceof Error
+          ? err.message
+          : 'Connection error';
       setError(message);
-      toast.error('Échec de la connexion', { description: message });
+      toast.error('Login failed', { description: message });
       throw new Error(message);
     } finally {
       setIsLoading(false);
     }
   }, [router, updateAuth, clearQueryCache]);
 
+  // ===== LOGOUT =====
   const logout = useCallback(async () => {
     try {
       if (auth.refreshToken) {
-        await api.post('/auth/logout', {
+        await refreshApi.post('/auth/logout', {
           refreshToken: auth.refreshToken,
         });
       }
     } catch {
-      // Even if server logout fails, clear client state
+      // Server might be unreachable, clean up anyway
     } finally {
       clearQueryCache();
       updateAuth(defaultAuth);
-      toast.info('Déconnecté', { description: 'À bientôt !' });
+      toast.info('Logged out', { description: 'See you soon!' });
       router.push('/');
     }
   }, [auth.refreshToken, router, updateAuth, clearQueryCache]);

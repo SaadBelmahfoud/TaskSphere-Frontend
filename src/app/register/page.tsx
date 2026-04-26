@@ -39,15 +39,15 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await registerUser(data);
-      toast.success('Inscription réussie !', {
-        description: 'Vous pouvez maintenant vous connecter.',
+      toast.success('Registration successful!', {
+        description: 'You can now sign in.',
       });
       router.push('/');
     } catch (err: unknown) {
       const message = isApiError(err)
-        ? err.response.data.error || err.response.data.message || 'Erreur serveur'
-        : 'Erreur lors de l\'inscription';
-      toast.error('Échec de l\'inscription', { description: message });
+        ? err.response.data.error || err.response.data.message || 'Server error'
+        : 'Registration failed';
+      toast.error('Registration failed', { description: message });
     } finally {
       setIsLoading(false);
     }
@@ -58,23 +58,23 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">TaskSphere</h1>
-          <p className="text-muted-foreground">Créez votre compte pour commencer</p>
+          <p className="text-muted-foreground">Create your account to get started</p>
         </div>
 
         <Card>
           <CardContent className="p-6 sm:p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {/* Nom d'utilisateur */}
+              {/* Username */}
               <div className="space-y-2">
                 <Label htmlFor="username" className="flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
-                  Nom d&apos;utilisateur
+                  Username
                 </Label>
                 <Input
                   id="username"
                   type="text"
                   {...register('username')}
-                  placeholder="nom_utilisateur"
+                  placeholder="username"
                   autoComplete="username"
                 />
                 {errors.username && (
@@ -82,15 +82,15 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Prénom et Nom */}
+              {/* First and Last name */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">Prénom</Label>
+                  <Label htmlFor="firstName">First Name</Label>
                   <Input
                     id="firstName"
                     type="text"
                     {...register('firstName')}
-                    placeholder="Prénom"
+                    placeholder="First name"
                     autoComplete="given-name"
                   />
                   {errors.firstName && (
@@ -98,12 +98,12 @@ export default function RegisterPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Nom</Label>
+                  <Label htmlFor="lastName">Last Name</Label>
                   <Input
                     id="lastName"
                     type="text"
                     {...register('lastName')}
-                    placeholder="Nom"
+                    placeholder="Last name"
                     autoComplete="family-name"
                   />
                   {errors.lastName && (
@@ -122,7 +122,7 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   {...register('email')}
-                  placeholder="votre@email.com"
+                  placeholder="your@email.com"
                   autoComplete="email"
                 />
                 {errors.email && (
@@ -130,11 +130,11 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Mot de passe */}
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5" />
-                  Mot de passe
+                  Password
                 </Label>
                 <Input
                   id="password"
@@ -148,11 +148,11 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Confirmation mot de passe */}
+              {/* Confirm password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5" />
-                  Confirmer le mot de passe
+                  Confirm Password
                 </Label>
                 <Input
                   id="confirmPassword"
@@ -168,18 +168,18 @@ export default function RegisterPage() {
 
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Inscription...</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Registering...</>
                 ) : (
-                  "S'inscrire"
+                  'Register'
                 )}
               </Button>
             </form>
 
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground">
-                Déjà un compte ?{' '}
+                Already have an account?{' '}
                 <Link href="/" className="text-primary hover:text-primary/80 font-medium">
-                  Connectez-vous
+                  Sign in
                 </Link>
               </p>
             </div>
@@ -189,12 +189,12 @@ export default function RegisterPage() {
         <div className="mt-4 text-center">
           <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" />
-            Retour à la connexion
+            Back to sign in
           </Link>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          TaskSphere Frontend — Sprint 2 • JWT Auth + CRUD + Ownership
+          TaskSphere — Sprint 3 &bull; JWT Auth + CRUD + Ownership
         </p>
       </div>
     </div>

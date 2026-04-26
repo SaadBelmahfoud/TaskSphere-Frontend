@@ -22,8 +22,8 @@ export const taskKeys = {
 };
 
 // ================================================================
-// FONCTIONS API DIRECTES (sans cache)
-// Utilisées par : Ownership Test (besoin de données fraîches)
+// DIRECT API FUNCTIONS (no cache)
+// Used by: Ownership Test (needs fresh data)
 // ================================================================
 
 export async function createTask(data: TaskCreateRequest): Promise<TaskResponse> {
@@ -82,8 +82,8 @@ export async function assignTask(id: string, assigneeId: string): Promise<TaskRe
 }
 
 // ================================================================
-// HOOKS TANSTACK QUERY (avec cache + invalidation)
-// Utilisé par : tasks/page.tsx, tasks/[id]/page.tsx
+// TANSTACK QUERY HOOKS (with cache + invalidation)
+// Used by: tasks/page.tsx, tasks/[id]/page.tsx
 // ================================================================
 
 export function useMyTasksQuery(page: number = 0, size: number = 20) {
@@ -120,14 +120,12 @@ export function useCreateTaskMutation() {
   return useMutation({
     mutationFn: createTask,
     onSuccess: () => {
-      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
-      // pour que la Kanban, la liste filtrée et les détails se mettent à jour
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Tâche créée avec succès');
+      toast.success('Task created successfully');
     },
     onError: (error) => {
-      toast.error('Erreur lors de la création', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error creating task', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -138,13 +136,12 @@ export function useUpdateTaskMutation(id: string) {
   return useMutation({
     mutationFn: (data: TaskUpdateRequest) => updateTask(id, data),
     onSuccess: () => {
-      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Tâche mise à jour');
+      toast.success('Task updated');
     },
     onError: (error) => {
-      toast.error('Erreur lors de la mise à jour', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error updating task', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -155,16 +152,12 @@ export function useUpdateTaskStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => updateTaskStatus(id, status),
     onSuccess: (_data, variables) => {
-      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
-      // TaskKeys.lists() ne couvrait que ['tasks','list'] ce qui n'invalide
-      // PAS les requêtes filtrées ['tasks','filtered',...] utilisées par la Kanban.
-      // taskKeys.all = ['tasks'] couvre TOUTES les sous-requêtes.
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success(`Statut mis à jour : ${variables.status}`);
+      toast.success(`Status updated: ${variables.status}`);
     },
     onError: (error) => {
-      toast.error('Erreur lors du changement de statut', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error changing status', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -175,13 +168,12 @@ export function useDeleteTaskMutation() {
   return useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
-      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Tâche supprimée');
+      toast.success('Task deleted');
     },
     onError: (error) => {
-      toast.error('Erreur lors de la suppression', {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error deleting task', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -192,13 +184,12 @@ export function useAssignTaskMutation() {
   return useMutation({
     mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string }) => assignTask(id, assigneeId),
     onSuccess: () => {
-      // Invalider TOUTES les requêtes tasks (list, filtered, detail)
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Tâche assignée avec succès');
+      toast.success('Task assigned successfully');
     },
     onError: (error) => {
-      toast.error("Erreur lors de l'assignation", {
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      toast.error('Error assigning task', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });

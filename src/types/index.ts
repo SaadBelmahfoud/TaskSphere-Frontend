@@ -1,4 +1,4 @@
-// ===== Types basés sur le code réel du backend =====
+// ===== Types based on the actual backend code =====
 
 export type TaskStatus = 'TODO' | 'DOING' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -44,7 +44,7 @@ export interface TaskPageResponse {
   size: number;
 }
 
-// ===== Filtres avancés pour les tâches =====
+// ===== Advanced task filters =====
 export interface TaskFilters {
   keyword?: string;
   status?: string;
@@ -92,9 +92,7 @@ export interface AuthState {
   tokenExpiry: number | null;
 }
 
-// ===== Interface d'erreur API standardisée =====
-// Représente la structure des réponses d'erreur du GlobalExceptionHandler backend.
-
+// ===== Standardized API error interface =====
 export interface ApiErrorResponse {
   error?: string;
   message?: string;
@@ -103,18 +101,68 @@ export interface ApiErrorResponse {
   path?: string;
 }
 
-// ===== Type Guard isApiError (Correction B1/B2) =====
-// Avant : const err = error as { response?: { data?: { message?: string } } };
-// Après : if (isApiError(error)) { ... } — type-safe à l'exécution
-
+// ===== Type Guard isApiError =====
 export function isApiError(error: unknown): error is { response: { data: ApiErrorResponse; status: number } } {
   return (
     typeof error === 'object' &&
     error !== null &&
     'response' in error &&
-    typeof (error as any).response === 'object' &&
-    (error as any).response !== null &&
-    'data' in (error as any).response &&
-    typeof (error as any).response.data === 'object'
+    typeof (error as Record<string, unknown>).response === 'object' &&
+    (error as Record<string, unknown>).response !== null &&
+    'data' in (error as Record<string, unknown>).response &&
+    typeof ((error as Record<string, unknown>).response as Record<string, unknown>).data === 'object'
   );
+}
+
+// ===== Sprint 3 — Collaboration Types =====
+
+export interface CommentResponse {
+  id: string;
+  content: string;
+  username: string;
+  taskId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentCreateRequest {
+  content: string;
+}
+
+export interface ActivityLogResponse {
+  id: string;
+  action: string;
+  description: string;
+  username: string;
+  taskId: string | null;
+  taskTitle: string | null;
+  timestamp: string;
+}
+
+export interface ActivityLogPageResponse {
+  content: ActivityLogResponse[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface DashboardStatsResponse {
+  totalTasks: number;
+  tasksByStatus: Record<string, number>;
+  tasksByPriority: Record<string, number>;
+  recentActivities: ActivityLogResponse[];
+  tasksCreatedThisWeek: number;
+  tasksCompletedThisWeek: number;
+  overdueTasks: number;
+}
+
+export interface UserAdminResponse {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  enabled: boolean;
 }

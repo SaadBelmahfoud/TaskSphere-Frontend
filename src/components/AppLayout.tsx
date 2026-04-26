@@ -74,7 +74,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </main>
       <footer className="bg-card border-t py-4 mt-auto">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-muted-foreground">
-          TaskSphere Frontend &copy; {new Date().getFullYear()} — Sprint 2 • shadcn/ui • TanStack Query
+          TaskSphere &copy; {new Date().getFullYear()} — Sprint 3 &bull; shadcn/ui &bull; TanStack Query
         </div>
       </footer>
     </div>

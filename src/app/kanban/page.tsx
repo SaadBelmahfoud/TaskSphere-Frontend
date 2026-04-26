@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useFilteredTasksQuery, useUpdateTaskStatusMutation } from '@/hooks/useTasks';
 import { TaskFilters } from '@/types';
@@ -25,36 +25,35 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useState } from 'react';
 
 type ColumnStatus = 'TODO' | 'DOING' | 'DONE';
 
 const columnConfig: Record<ColumnStatus, { label: string; color: string; bgColor: string }> = {
   TODO: {
-    label: 'À faire',
+    label: 'To Do',
     color: 'text-gray-700 dark:text-gray-300',
     bgColor: 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
   },
   DOING: {
-    label: 'En cours',
-    color: 'text-blue-700 dark:text-blue-300',
-    bgColor: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
+    label: 'In Progress',
+    color: 'text-sky-700 dark:text-sky-300',
+    bgColor: 'bg-sky-50 dark:bg-sky-950 border-sky-200 dark:border-sky-800',
   },
   DONE: {
-    label: 'Terminé',
+    label: 'Done',
     color: 'text-emerald-700 dark:text-emerald-300',
     bgColor: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800',
   },
 };
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
-  LOW: { label: 'Basse', className: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' },
-  MEDIUM: { label: 'Moyenne', className: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-800' },
-  HIGH: { label: 'Haute', className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900 dark:text-orange-300 dark:border-orange-800' },
-  CRITICAL: { label: 'Critique', className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300 dark:border-red-800' },
+  LOW: { label: 'Low', className: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' },
+  MEDIUM: { label: 'Medium', className: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-800' },
+  HIGH: { label: 'High', className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900 dark:text-orange-300 dark:border-orange-800' },
+  CRITICAL: { label: 'Critical', className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300 dark:border-red-800' },
 };
 
-// ===== Composant carte draggable =====
+// ===== Draggable task card =====
 interface SortableTaskCardProps {
   task: {
     id: string;
@@ -102,7 +101,7 @@ function SortableTaskCard({ task }: SortableTaskCardProps) {
   );
 }
 
-// ===== Composant overlay pendant le drag =====
+// ===== Drag overlay card =====
 function DragOverlayCard({ task }: { task: { id: string; title: string; priority: string; status: string } | null }) {
   if (!task) return null;
 
@@ -118,7 +117,7 @@ function DragOverlayCard({ task }: { task: { id: string; title: string; priority
   );
 }
 
-// ===== Composant colonne DROPPABLE =====
+// ===== Droppable column =====
 interface ColumnProps {
   status: ColumnStatus;
   tasks: {
@@ -129,34 +128,10 @@ interface ColumnProps {
   }[];
 }
 
-/**
- * CORRECTION KANBAN — useDroppable sur chaque colonne
- *
- * PROBLÈME AVANT :
- *   Les colonnes n'avaient pas de "drop zone". Quand on déposait une carte
- *   sur une colonne vide (sans tâches), l'événement "over" retournait null
- *   car il n'y avait aucun élément avec lequel faire une collision.
- *   Résultat : la carte revenait à sa position initiale.
- *
- * SOLUTION :
- *   Chaque colonne utilise useDroppable() avec un ID comme "column-TODO",
- *   "column-DOING", "column-DONE". Cela enregistre la colonne comme une
- *   zone de dépôt dans le DndContext, même si elle est vide.
- *
- * PRINCIPE useDroppable :
- *   useDroppable({ id: "column-TODO" }) retourne :
- *   - setNodeRef : à attacher au div de la colonne
- *   - isOver : true quand un élément est traîné AU-DESSUS de cette colonne
- *
- *   Quand on dépose une carte, "over.id" sera "column-DOING" (par exemple)
- *   au lieu d'un ID de tâche. Le handleDragEnd détecte le préfixe "column-"
- *   pour déterminer la colonne cible.
- */
 function Column({ status, tasks }: ColumnProps) {
   const config = columnConfig[status];
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
 
-  // Enregistre cette colonne comme zone de dépôt
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
   });
@@ -169,7 +144,7 @@ function Column({ status, tasks }: ColumnProps) {
           isOver ? 'ring-2 ring-primary/50 ring-offset-1' : ''
         }`}
       >
-        {/* En-tête de colonne */}
+        {/* Column header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h3 className={`text-sm font-semibold ${config.color}`}>{config.label}</h3>
@@ -179,12 +154,12 @@ function Column({ status, tasks }: ColumnProps) {
           </div>
         </div>
 
-        {/* Liste de tâches triables */}
+        {/* Sortable task list */}
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {tasks.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-8 italic">
-                {isOver ? 'Déposez ici' : 'Aucune tâche'}
+                {isOver ? 'Drop here' : 'No tasks'}
               </p>
             ) : (
               tasks.map((task) => (
@@ -198,7 +173,7 @@ function Column({ status, tasks }: ColumnProps) {
   );
 }
 
-// ===== Page principale Kanban =====
+// ===== Main Kanban Page =====
 export default function KanbanPage() {
   const [activeTask, setActiveTask] = useState<{
     id: string;
@@ -214,7 +189,7 @@ export default function KanbanPage() {
   const { data: taskPage, isLoading } = useFilteredTasksQuery(filters, 0, 200);
   const allTasks = useMemo(() => taskPage?.content ?? [], [taskPage]);
 
-  // Grouper les tâches par statut
+  // Group tasks by status
   const columns: Record<ColumnStatus, typeof allTasks> = useMemo(
     () => ({
       TODO: allTasks.filter((t) => t.status === 'TODO'),
@@ -238,14 +213,6 @@ export default function KanbanPage() {
     }
   };
 
-  /**
-   * CORRECTION — handleDragEnd avec détection de colonne droppable
-   *
-   * LOGIQUE :
-   * 1. Si over.id commence par "column-" → déposé directement sur une colonne
-   *    (même si la colonne est vide, le useDroppable enregistre la collision)
-   * 2. Sinon → over.id est l'ID d'une tâche → on trouve sa colonne
-   */
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
 
@@ -255,30 +222,30 @@ export default function KanbanPage() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // Ne rien faire si on dépose sur la même carte
+    // Don't do anything if dropped on the same card
     if (activeId === overId) return;
 
-    // Trouver la tâche traînée
+    // Find the dragged task
     const draggedTask = allTasks.find((t) => t.id === activeId);
     if (!draggedTask) return;
 
-    // Déterminer la colonne cible
+    // Determine target column
     let targetColumn: ColumnStatus | null = null;
 
-    // Cas 1 : déposé sur une colonne (drop zone)
+    // Case 1: dropped on a column (drop zone)
     if (overId.startsWith('column-')) {
       targetColumn = overId.replace('column-', '') as ColumnStatus;
     } else {
-      // Cas 2 : déposé sur une autre tâche → trouver sa colonne
+      // Case 2: dropped on another task → find its column
       const overTask = allTasks.find((t) => t.id === overId);
       if (overTask) {
         targetColumn = overTask.status as ColumnStatus;
       }
     }
 
-    // Mettre à jour le statut si la colonne a changé
+    // Update status if column changed
     if (targetColumn && targetColumn !== draggedTask.status) {
-      updateStatusMutation.mutateAsync({
+      updateStatusMutation.mutate({
         id: draggedTask.id,
         status: targetColumn,
       });
@@ -290,10 +257,10 @@ export default function KanbanPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Columns3 className="h-6 w-6 text-primary" />
-          Tableau Kanban
+          Kanban Board
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Glissez-déposez les tâches pour changer leur statut
+          Drag and drop tasks to change their status
         </p>
       </div>
 
@@ -336,9 +303,9 @@ export default function KanbanPage() {
       {allTasks.length === 0 && !isLoading && (
         <div className="text-center py-16 mt-4">
           <Columns3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-lg font-medium text-foreground mb-2">Aucune tâche</h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">No tasks</h3>
           <p className="text-sm text-muted-foreground">
-            Créez des tâches pour les voir apparaître dans le tableau Kanban.
+            Create tasks to see them appear in the Kanban board.
           </p>
         </div>
       )}

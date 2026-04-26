@@ -25,7 +25,7 @@ export default function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmLabel = 'Confirmer',
+  confirmLabel = 'Confirm',
   onConfirm,
   onCancel,
   isLoading,
@@ -39,11 +39,11 @@ export default function ConfirmDialog({
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onCancel} disabled={isLoading}>
-            Annuler
+            Cancel
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isLoading}>
             {isLoading ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Suppression...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {confirmLabel}...</>
             ) : (
               confirmLabel
             )}
