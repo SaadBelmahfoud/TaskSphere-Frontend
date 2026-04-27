@@ -1,168 +1,140 @@
-'use client';
+"use client";
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { TaskCreateRequest, TaskUpdateRequest } from '@/types';
-import { taskCreateSchema, taskUpdateSchema, TaskCreateFormData, TaskUpdateFormData } from '@/lib/schemas';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createTaskSchema, updateTaskSchema, type CreateTaskFormData, type UpdateTaskFormData } from "@/lib/schemas";
+import type { TaskResponse, TaskPriority } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 
 interface TaskFormProps {
-  mode: 'create' | 'edit';
-  initialData?: {
-    title: string;
-    description: string;
-    priority: string;
-    dueDate: string | null;
-  };
-  onSubmit: (data: TaskCreateRequest | TaskUpdateRequest) => Promise<void>;
-  onCancel?: () => void;
-  isLoading?: boolean;
+  task?: TaskResponse;
+  onSubmit: (data: CreateTaskFormData | UpdateTaskFormData) => void;
+  loading?: boolean;
+  mode: "create" | "edit";
 }
 
-export default function TaskForm({ mode, initialData, onSubmit, onCancel, isLoading }: TaskFormProps) {
-  const isCreate = mode === 'create';
+export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProps) {
+  const schema = mode === "create" ? createTaskSchema : updateTaskSchema;
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
-    reset,
     formState: { errors },
-  } = useForm<TaskCreateFormData | TaskUpdateFormData>({
-    resolver: zodResolver(isCreate ? taskCreateSchema : taskUpdateSchema),
-    defaultValues: {
-      title: initialData?.title || '',
-      description: initialData?.description || '',
-      priority: (initialData?.priority || 'MEDIUM') as TaskCreateFormData['priority'],
-      dueDate: initialData?.dueDate?.split('T')[0] || '',
-    },
+  } = useForm<CreateTaskFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: task
+      ? {
+          title: task.title,
+          description: task.description,
+          priority: task.priority as TaskPriority,
+          dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
+          assigneeId: task.assigneeId || "",
+        }
+      : {
+          title: "",
+          description: "",
+          priority: "MEDIUM" as TaskPriority,
+        },
   });
 
-  const currentPriority = watch('priority') as string || 'MEDIUM';
-
-  // Reset form when initialData changes (for edit mode)
-  useEffect(() => {
-    if (initialData) {
-      reset({
-        title: initialData.title,
-        description: initialData.description,
-        priority: initialData.priority as TaskUpdateFormData['priority'],
-        dueDate: initialData.dueDate?.split('T')[0] || '',
-      });
-    }
-  }, [initialData, reset]);
-
-  const handleFormSubmit = async (data: TaskCreateFormData | TaskUpdateFormData) => {
-    try {
-      const payload: TaskCreateRequest | TaskUpdateRequest = {
-        title: data.title?.trim() as string,
-        description: data.description?.trim() || undefined,
-        priority: data.priority || undefined,
-        dueDate: (data.dueDate && data.dueDate.trim() !== '') ? data.dueDate.trim() : undefined,
-      };
-
-      await onSubmit(payload);
-      if (mode === 'create') {
-        reset({
-          title: '',
-          description: '',
-          priority: 'MEDIUM',
-          dueDate: '',
-        });
-      }
-    } catch {
-      // Error handled by parent
-    }
-  };
-
-  const priorities = [
-    { value: 'LOW', label: 'Low', className: 'bg-slate-100 text-slate-600 border-slate-200' },
-    { value: 'MEDIUM', label: 'Medium', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-    { value: 'HIGH', label: 'High', className: 'bg-orange-100 text-orange-700 border-orange-200' },
-    { value: 'CRITICAL', label: 'Critical', className: 'bg-red-100 text-red-700 border-red-200' },
-  ];
+  const [priority, setPriority] = useState<TaskPriority>(
+    (task?.priority as TaskPriority) || "MEDIUM"
+  );
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="task-title">Title *</Label>
+        <Label htmlFor="title">Title</Label>
         <Input
-          id="task-title"
-          type="text"
-          {...register('title')}
-          placeholder="Task title"
+          id="title"
+          placeholder="Task title..."
+          {...register("title")}
+          disabled={loading}
         />
         {errors.title && (
-          <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
+          <p className="text-sm text-destructive">{errors.title.message}</p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="task-desc">Description</Label>
+        <Label htmlFor="description">Description</Label>
         <Textarea
-          id="task-desc"
-          {...register('description')}
-          maxLength={5000}
-          rows={3}
-          placeholder="Detailed description (optional)"
-          className="resize-none"
+          id="description"
+          placeholder="Describe the task..."
+          rows={4}
+          {...register("description")}
+          disabled={loading}
         />
         {errors.description && (
-          <p className="text-xs text-destructive mt-1">{errors.description.message}</p>
+          <p className="text-sm text-destructive">{errors.description.message}</p>
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label>Priority</Label>
-        <div className="flex gap-2 flex-wrap">
-          {priorities.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => setValue('priority', p.value as TaskCreateFormData['priority'])}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                currentPriority === p.value
-                  ? `${p.className} ring-2 ring-ring ring-offset-2`
-                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Priority</Label>
+          <Select
+            value={priority}
+            onValueChange={(val) => {
+              setPriority(val as TaskPriority);
+              setValue("priority", val as TaskPriority);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
+              <SelectItem value="CRITICAL">Critical</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.priority && (
+            <p className="text-sm text-destructive">{errors.priority.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dueDate">Due Date</Label>
+          <Input
+            id="dueDate"
+            type="date"
+            {...register("dueDate")}
+            disabled={loading}
+          />
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="task-date">Due date</Label>
-        <Input
-          id="task-date"
-          type="date"
-          {...register('dueDate')}
-        />
-      </div>
+      {mode === "create" && (
+        <div className="space-y-2">
+          <Label htmlFor="assigneeId">Assignee ID (optional)</Label>
+          <Input
+            id="assigneeId"
+            placeholder="Enter assignee user ID"
+            {...register("assigneeId")}
+            disabled={loading}
+          />
+        </div>
+      )}
 
-      <div className="flex gap-3 pt-2">
-        <Button type="submit" disabled={isLoading} className="flex-1">
-          {isLoading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
-          ) : mode === 'create' ? (
-            'Create task'
-          ) : (
-            'Update'
-          )}
-        </Button>
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-      </div>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {mode === "create" ? "Create Task" : "Update Task"}
+      </Button>
     </form>
   );
 }

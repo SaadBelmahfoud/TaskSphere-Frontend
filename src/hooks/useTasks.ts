@@ -1,196 +1,135 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import api from '@/lib/api';
-import {
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type {
   TaskResponse,
+  TaskPageResponse,
   TaskCreateRequest,
   TaskUpdateRequest,
-  TaskStatusRequest,
-  TaskPageResponse,
   TaskFilters,
-} from '@/types';
+  TaskStatusRequest,
+  TaskAssignRequest,
+} from "@/types";
+import { toast } from "sonner";
 
-// ===== Query Keys Factory =====
-export const taskKeys = {
-  all: ['tasks'] as const,
-  lists: () => [...taskKeys.all, 'list'] as const,
-  list: (page: number, size: number) => [...taskKeys.lists(), { page, size }] as const,
-  filteredList: (filters: TaskFilters, page: number, size: number) =>
-    [...taskKeys.all, 'filtered', filters, page, size] as const,
-  details: () => [...taskKeys.all, 'detail'] as const,
-  detail: (id: string) => [...taskKeys.details(), id] as const,
-};
-
-// ================================================================
-// DIRECT API FUNCTIONS (no cache)
-// Used by: Ownership Test (needs fresh data)
-// ================================================================
-
-export async function createTask(data: TaskCreateRequest): Promise<TaskResponse> {
-  const response = await api.post<TaskResponse>('/tasks', data);
-  return response.data;
-}
-
-export async function getMyTasks(
-  page: number = 0,
-  size: number = 20,
-  filters?: TaskFilters
-): Promise<TaskPageResponse> {
-  const params: Record<string, unknown> = { page, size };
-  if (filters) {
-    if (filters.keyword) params.keyword = filters.keyword;
-    if (filters.status) params.status = filters.status;
-    if (filters.priority) params.priority = filters.priority;
-    if (filters.dueDateFrom) params.dueDateFrom = filters.dueDateFrom;
-    if (filters.dueDateTo) params.dueDateTo = filters.dueDateTo;
-    if (filters.createdFrom) params.createdFrom = filters.createdFrom;
-    if (filters.createdTo) params.createdTo = filters.createdTo;
-    if (filters.assigneeId) params.assigneeId = filters.assigneeId;
-    if (filters.sortBy) params.sortBy = filters.sortBy;
-    if (filters.sortDir) params.sortDir = filters.sortDir;
-  }
-  const response = await api.get<TaskPageResponse>('/tasks', { params });
-  return response.data;
-}
-
-export async function getTaskById(id: string): Promise<TaskResponse> {
-  const response = await api.get<TaskResponse>(`/tasks/${id}`);
-  return response.data;
-}
-
-export async function updateTask(id: string, data: TaskUpdateRequest): Promise<TaskResponse> {
-  const response = await api.put<TaskResponse>(`/tasks/${id}`, data);
-  return response.data;
-}
-
-export async function updateTaskStatus(id: string, status: string): Promise<TaskResponse> {
-  const response = await api.patch<TaskResponse>(`/tasks/${id}/status`, {
-    status,
-  } satisfies TaskStatusRequest);
-  return response.data;
-}
-
-export async function deleteTask(id: string): Promise<void> {
-  await api.delete(`/tasks/${id}`);
-}
-
-export async function assignTask(id: string, assigneeId: string): Promise<TaskResponse> {
-  const response = await api.patch<TaskResponse>(`/tasks/${id}/assign`, {
-    assigneeId,
-  });
-  return response.data;
-}
-
-// ================================================================
-// TANSTACK QUERY HOOKS (with cache + invalidation)
-// Used by: tasks/page.tsx, tasks/[id]/page.tsx
-// ================================================================
-
-export function useMyTasksQuery(page: number = 0, size: number = 20) {
-  return useQuery({
-    queryKey: taskKeys.list(page, size),
-    queryFn: () => getMyTasks(page, size),
-    staleTime: 0,
+export function useTasks(page: number = 0, size: number = 20) {
+  return useQuery<TaskPageResponse>({
+    queryKey: ["tasks", page, size],
+    queryFn: async () => {
+      const res = await api.get("/tasks", { params: { page, size } });
+      return res.data;
+    },
   });
 }
 
-export function useFilteredTasksQuery(
-  filters: TaskFilters,
-  page: number = 0,
-  size: number = 20
-) {
-  return useQuery({
-    queryKey: taskKeys.filteredList(filters, page, size),
-    queryFn: () => getMyTasks(page, size, filters),
-    staleTime: 0,
+export function useTaskSearch(params: TaskFilters) {
+  return useQuery<TaskPageResponse>({
+    queryKey: ["tasks", "search", params],
+    queryFn: async () => {
+      const res = await api.get("/tasks/search", { params });
+      return res.data;
+    },
+    enabled: !!(params.keyword || params.status || params.priority),
   });
 }
 
-export function useTaskQuery(id: string) {
-  return useQuery({
-    queryKey: taskKeys.detail(id),
-    queryFn: () => getTaskById(id),
+export function useTask(id: string) {
+  return useQuery<TaskResponse>({
+    queryKey: ["tasks", id],
+    queryFn: async () => {
+      const res = await api.get(`/tasks/${id}`);
+      return res.data;
+    },
     enabled: !!id,
-    staleTime: 0,
   });
 }
 
-export function useCreateTaskMutation() {
-  const queryClient = useQueryClient();
+export function useCreateTask() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: createTask,
+    mutationFn: async (data: TaskCreateRequest) => {
+      const res = await api.post("/tasks", data);
+      return res.data as TaskResponse;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Task created successfully');
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Task created successfully");
     },
-    onError: (error) => {
-      toast.error('Error creating task', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    onError: () => {
+      toast.error("Failed to create task");
     },
   });
 }
 
-export function useUpdateTaskMutation(id: string) {
-  const queryClient = useQueryClient();
+export function useUpdateTask() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: TaskUpdateRequest) => updateTask(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: TaskUpdateRequest }) => {
+      const res = await api.put(`/tasks/${id}`, data);
+      return res.data as TaskResponse;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Task updated successfully");
+    },
+    onError: () => {
+      toast.error("Failed to update task");
+    },
+  });
+}
+
+export function useDeleteTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/tasks/${id}`);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Task updated');
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Task deleted successfully");
     },
-    onError: (error) => {
-      toast.error('Error updating task', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    },
-  });
-}
-
-export function useUpdateTaskStatusMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => updateTaskStatus(id, status),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success(`Status updated: ${variables.status}`);
-    },
-    onError: (error) => {
-      toast.error('Error changing status', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    onError: () => {
+      toast.error("Failed to delete task");
     },
   });
 }
 
-export function useDeleteTaskMutation() {
-  const queryClient = useQueryClient();
+export function useChangeTaskStatus() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: deleteTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Task deleted');
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const res = await api.patch(`/tasks/${id}/status`, { status } as TaskStatusRequest);
+      return res.data as TaskResponse;
     },
-    onError: (error) => {
-      toast.error('Error deleting task', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Task status updated");
+    },
+    onError: () => {
+      toast.error("Failed to update task status");
     },
   });
 }
 
-export function useAssignTaskMutation() {
-  const queryClient = useQueryClient();
+export function useAssignTask() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string }) => assignTask(id, assigneeId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Task assigned successfully');
+    mutationFn: async ({ id, data }: { id: string; data: TaskAssignRequest }) => {
+      const res = await api.patch(`/tasks/${id}/assign`, data);
+      return res.data as TaskResponse;
     },
-    onError: (error) => {
-      toast.error('Error assigning task', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
+      toast.success("Task assigned successfully");
+    },
+    onError: () => {
+      toast.error("Failed to assign task");
     },
   });
 }

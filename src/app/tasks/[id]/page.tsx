@@ -1,386 +1,312 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import AppLayout from '@/components/AppLayout';
-import { useAuth } from '@/context/AuthContext';
-import TaskForm from '@/components/TaskForm';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import CommentsSection from '@/components/CommentsSection';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import AppLayout from "@/components/AppLayout";
+import TaskForm from "@/components/TaskForm";
+import CommentsSection from "@/components/CommentsSection";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import {
-  useTaskQuery,
-  useUpdateTaskMutation,
-  useUpdateTaskStatusMutation,
-  useDeleteTaskMutation,
-  useAssignTaskMutation,
-} from '@/hooks/useTasks';
-import { TaskUpdateRequest } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ArrowLeft, Pencil, Trash2, UserPlus, UserX } from 'lucide-react';
-import { toast } from 'sonner';
-import { parseLocalDate } from '@/lib/utils';
+  useTask,
+  useUpdateTask,
+  useDeleteTask,
+  useChangeTaskStatus,
+  useAssignTask,
+} from "@/hooks/useTasks";
+import type { TaskStatus } from "@/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ArrowLeft,
+  Trash2,
+  UserPlus,
+  UserMinus,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
 
-const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string; label: string }> = {
-  TODO: { variant: 'secondary', className: 'bg-gray-100 text-gray-700 border-gray-200', label: 'To Do' },
-  DOING: { variant: 'outline', className: 'bg-sky-50 text-sky-700 border-sky-200', label: 'In Progress' },
-  DONE: { variant: 'default', className: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Done' },
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  TODO: "outline",
+  DOING: "secondary",
+  DONE: "default",
 };
 
-const priorityConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string; label: string }> = {
-  LOW: { variant: 'outline', className: 'bg-slate-100 text-slate-600 border-slate-200', label: 'Low' },
-  MEDIUM: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Medium' },
-  HIGH: { variant: 'outline', className: 'bg-orange-100 text-orange-700 border-orange-200', label: 'High' },
-  CRITICAL: { variant: 'destructive', className: 'bg-red-100 text-red-700 border-red-200', label: 'Critical' },
+const statusLabel: Record<string, string> = {
+  TODO: "To Do",
+  DOING: "In Progress",
+  DONE: "Done",
 };
 
 export default function TaskDetailPage() {
-  const params = useParams();
+  const { auth } = useAuth();
   const router = useRouter();
-  const id = params.id as string;
+  const params = useParams();
+  const taskId = params.id as string;
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [assigneeEmail, setAssigneeEmail] = useState('');
+  const { data: task, isLoading } = useTask(taskId);
+  const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
+  const changeStatus = useChangeTaskStatus();
+  const assignTask = useAssignTask();
 
-  const { data: task, isLoading, error, isError } = useTaskQuery(id);
-  const updateMutation = useUpdateTaskMutation(id);
-  const updateStatusMutation = useUpdateTaskStatusMutation();
-  const deleteMutation = useDeleteTaskMutation();
-  const assignMutation = useAssignTaskMutation();
+  const [assigneeId, setAssigneeId] = useState("");
+  const [editing, setEditing] = useState(false);
 
-  const handleUpdate = async (data: TaskUpdateRequest) => {
-    await updateMutation.mutateAsync(data);
-    setIsEditing(false);
+  useEffect(() => {
+    if (!auth?.isAuthenticated) {
+      router.replace("/");
+    }
+  }, [auth, router]);
+
+  if (!auth?.isAuthenticated) return null;
+
+  const handleUpdate = (data: Record<string, unknown>) => {
+    updateTask.mutate(
+      { id: taskId, data: data as Parameters<typeof updateTask.mutate>[0]["data"] },
+      {
+        onSuccess: () => setEditing(false),
+      }
+    );
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    await updateStatusMutation.mutateAsync({ id, status: newStatus });
+  const handleDelete = () => {
+    deleteTask.mutate(taskId, {
+      onSuccess: () => router.push("/tasks"),
+    });
   };
 
-  const handleDelete = async () => {
-    await deleteMutation.mutateAsync(id);
-    router.push('/tasks');
+  const handleStatusChange = (status: TaskStatus) => {
+    changeStatus.mutate({ id: taskId, status });
   };
 
-  const handleAssign = async () => {
-    if (!assigneeEmail.trim()) {
-      toast.error('Please enter the assignee email');
+  const handleAssign = () => {
+    if (!assigneeId.trim()) {
+      toast.error("Please enter an assignee ID");
       return;
     }
-    try {
-      await assignMutation.mutateAsync({ id, assigneeId: assigneeEmail.trim() });
-      setAssigneeEmail('');
-      toast.success('Task assigned successfully');
-    } catch {
-      toast.error('Unable to assign task', {
-        description: 'Check that the email is correct and the user exists',
-      });
-    }
+    assignTask.mutate(
+      { id: taskId, data: { assigneeId: assigneeId.trim() } },
+      {
+        onSuccess: () => setAssigneeId(""),
+      }
+    );
   };
 
-  const handleUnassign = async () => {
-    try {
-      await assignMutation.mutateAsync({ id, assigneeId: '' });
-      toast.success('Assignment removed');
-    } catch {
-      toast.error('Unable to remove assignment');
-    }
-  };
-
-  const { auth: userAuth } = useAuth();
-  const currentUserRole = userAuth.role || 'USER';
-  const canAssign = currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER';
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '\u2014';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleUnassign = () => {
+    assignTask.mutate({ id: taskId, data: { assigneeId: "" } });
   };
 
   if (isLoading) {
     return (
       <AppLayout>
-        <Skeleton className="h-4 w-32 mb-6" />
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-card rounded-xl border shadow-sm p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-7 w-3/4" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16 rounded-full" />
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                  </div>
-                </div>
-                <Skeleton className="h-9 w-24 rounded-lg" />
-              </div>
-              <Skeleton className="h-px w-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-              </div>
-            </div>
-            <div className="bg-card rounded-xl border shadow-sm p-6 space-y-3">
-              <Skeleton className="h-4 w-32" />
-              <div className="flex gap-2">
-                <Skeleton className="h-10 w-24 rounded-lg" />
-                <Skeleton className="h-10 w-24 rounded-lg" />
-                <Skeleton className="h-10 w-24 rounded-lg" />
-              </div>
-            </div>
-          </div>
-          <div className="space-y-6">
-            <div className="bg-card rounded-xl border shadow-sm p-6 space-y-3">
-              <Skeleton className="h-4 w-16" />
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="space-y-1">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              ))}
-            </div>
-            <div className="bg-card rounded-xl border border-destructive/50 shadow-sm p-6 space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full rounded-lg" />
-            </div>
-          </div>
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </AppLayout>
     );
   }
 
-  if (isError || !task) {
+  if (!task) {
     return (
       <AppLayout>
-        <div className="text-center py-16">
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            {isError ? 'Error loading task' : 'Task not found'}
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            {error instanceof Error ? error.message : 'The requested task does not exist or you do not have access.'}
-          </p>
-          <Button variant="outline" onClick={() => router.push('/tasks')}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to tasks
-          </Button>
+        <div className="text-center py-12">
+          <p className="text-lg text-muted-foreground">Task not found</p>
+          <Link href="/tasks">
+            <Button variant="outline" className="mt-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Tasks
+            </Button>
+          </Link>
         </div>
       </AppLayout>
     );
   }
-
-  const status = statusConfig[task.status] || statusConfig.TODO;
-  const priority = priorityConfig[task.priority] || priorityConfig.MEDIUM;
 
   return (
     <AppLayout>
-      <Button variant="ghost" size="sm" onClick={() => router.push('/tasks')} className="mb-6 text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4 mr-1" />
-        Back to tasks
-      </Button>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-card rounded-xl border shadow-sm p-6">
-            {isEditing ? (
-              <div>
-                <h2 className="text-lg font-semibold text-foreground mb-4">Edit Task</h2>
-                <TaskForm
-                  mode="edit"
-                  initialData={{
-                    title: task.title,
-                    description: task.description,
-                    priority: task.priority,
-                    dueDate: task.dueDate,
-                  }}
-                  onSubmit={handleUpdate}
-                  onCancel={() => setIsEditing(false)}
-                  isLoading={updateMutation.isPending}
-                />
+      <div className="space-y-6">
+        {/* Back + header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/tasks">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">{task.title}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant={statusVariant[task.status] || "outline"}>
+                  {statusLabel[task.status] || task.status}
+                </Badge>
+                <Badge variant="outline">{task.priority}</Badge>
               </div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h1 className="text-xl font-bold text-foreground mb-2">{task.title}</h1>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant={status.variant} className={status.className}>
-                        {status.label}
-                      </Badge>
-                      <Badge variant={priority.variant} className={priority.className}>
-                        {priority.label}
-                      </Badge>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Pencil className="h-4 w-4 mr-1" />
+            </div>
+          </div>
+          <ConfirmDialog
+            trigger={
+              <Button variant="destructive" size="sm">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            }
+            title="Delete Task"
+            description="Are you sure you want to delete this task? This action cannot be undone."
+            onConfirm={handleDelete}
+            confirmText="Delete"
+            variant="destructive"
+          />
+        </div>
+
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details" className="space-y-6 mt-4">
+            {/* Status change */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {(["TODO", "DOING", "DONE"] as TaskStatus[]).map((s) => (
+                    <Button
+                      key={s}
+                      variant={task.status === s ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleStatusChange(s)}
+                      disabled={changeStatus.isPending || task.status === s}
+                    >
+                      {statusLabel[s]}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Task form / details */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base">
+                  {editing ? "Edit Task" : "Task Details"}
+                </CardTitle>
+                {!editing && (
+                  <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                     Edit
                   </Button>
-                </div>
+                )}
+              </CardHeader>
+              <CardContent>
+                {editing ? (
+                  <TaskForm
+                    mode="edit"
+                    task={task}
+                    onSubmit={handleUpdate}
+                    loading={updateTask.isPending}
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Description</p>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">
+                        {task.description || "No description"}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Owner ID</p>
+                        <p className="mt-1 text-sm font-mono text-xs">{task.userId}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Due Date</p>
+                        <p className="mt-1 text-sm">
+                          {task.dueDate
+                            ? new Date(task.dueDate).toLocaleDateString()
+                            : "No due date"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Created</p>
+                        <p className="mt-1 text-sm">
+                          {task.createdAt
+                            ? new Date(task.createdAt).toLocaleString()
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                        <p className="mt-1 text-sm">
+                          {task.completedAt
+                            ? new Date(task.completedAt).toLocaleString()
+                            : "Not yet"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                {task.description ? (
-                  <div className="mt-4 pt-4 border-t">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-                    <p className="text-sm text-foreground whitespace-pre-wrap">{task.description}</p>
+            {/* Assign section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Assignee</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {task.assigneeId ? (
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm">{task.assigneeId}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUnassign}
+                      disabled={assignTask.isPending}
+                    >
+                      <UserMinus className="mr-2 h-4 w-4" />
+                      Unassign
+                    </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic mt-4">No description</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Assignee ID (UUID)"
+                      value={assigneeId}
+                      onChange={(e) => setAssigneeId(e.target.value)}
+                      className="max-w-xs"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleAssign}
+                      disabled={assignTask.isPending}
+                    >
+                      {assignTask.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserPlus className="mr-2 h-4 w-4" />
+                      )}
+                      Assign
+                    </Button>
+                  </div>
                 )}
-              </>
-            )}
-          </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          <div className="bg-card rounded-xl border shadow-sm p-6">
-            <h2 className="text-sm font-medium text-muted-foreground mb-3">Change Status</h2>
-            <div className="flex gap-2 flex-wrap">
-              {Object.entries(statusConfig).map(([key, cfg]) => (
-                <Button
-                  key={key}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleStatusChange(key)}
-                  disabled={task.status === key || updateStatusMutation.isPending}
-                  className={`${task.status === key ? 'ring-2 ring-ring ring-offset-2 cursor-default' : ''} ${cfg.className}`}
-                >
-                  {cfg.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* Details */}
-          <div className="bg-card rounded-xl border shadow-sm p-6">
-            <h2 className="text-sm font-medium text-muted-foreground mb-4">Details</h2>
-            <dl className="space-y-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">ID</dt>
-                <dd className="text-foreground font-mono text-xs mt-0.5 break-all">{task.id}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Owner (userId)</dt>
-                <dd className="text-foreground font-mono text-xs mt-0.5 break-all">{task.userId}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Assignee</dt>
-                <dd className="text-foreground mt-0.5">
-                  {task.assigneeId ? (
-                    <Badge variant="secondary">{task.assigneeId}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground italic">Unassigned</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Created</dt>
-                <dd className="text-foreground mt-0.5">{formatDate(task.createdAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Due Date</dt>
-                <dd className="text-foreground mt-0.5">
-                  {task.dueDate
-                    ? parseLocalDate(task.dueDate).toLocaleDateString('en-US', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })
-                    : '\u2014'}
-                </dd>
-              </div>
-              {task.completedAt && (
-                <div>
-                  <dt className="text-muted-foreground">Completed</dt>
-                  <dd className="text-foreground mt-0.5">{formatDate(task.completedAt)}</dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* Assignment section (ADMIN/MANAGER only) */}
-          {canAssign && (
-            <div className="bg-card rounded-xl border shadow-sm p-6">
-              <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
-                <UserPlus className="h-4 w-4" />
-                Assignment
-              </h2>
-              <p className="text-xs text-muted-foreground mb-3">
-                {task.assigneeId
-                  ? `This task is assigned to ${task.assigneeId}`
-                  : 'This task is not assigned to anyone'}
-              </p>
-
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  placeholder="email@tasksphere.com"
-                  value={assigneeEmail}
-                  onChange={(e) => setAssigneeEmail(e.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Button
-                  size="sm"
-                  onClick={handleAssign}
-                  disabled={assignMutation.isPending || !assigneeEmail.trim()}
-                  className="shrink-0"
-                >
-                  <UserPlus className="h-3.5 w-3.5 mr-1" />
-                  Assign
-                </Button>
-              </div>
-
-              {task.assigneeId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUnassign}
-                  disabled={assignMutation.isPending}
-                  className="w-full mt-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                >
-                  <UserX className="h-3.5 w-3.5 mr-1" />
-                  Remove Assignment
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Danger zone */}
-          <div className="bg-card rounded-xl border border-destructive/50 shadow-sm p-6">
-            <h2 className="text-sm font-medium text-destructive mb-2">Danger Zone</h2>
-            <p className="text-xs text-muted-foreground mb-3">Deletion is irreversible (soft delete).</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDelete(true)}
-              className="w-full text-destructive border-destructive/50 hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete this task
-            </Button>
-          </div>
-        </div>
+          <TabsContent value="comments" className="mt-4">
+            <CommentsSection taskId={taskId} />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <ConfirmDialog
-        isOpen={showDelete}
-        title="Delete task"
-        message={`Are you sure you want to delete "${task.title}"?`}
-        confirmLabel="Delete permanently"
-        onConfirm={handleDelete}
-        onCancel={() => setShowDelete(false)}
-        isLoading={deleteMutation.isPending}
-      />
-
-      <CommentsSection taskId={task.id} />
     </AppLayout>
   );
 }

@@ -1,20 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { DashboardStatsResponse } from '@/types';
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type { DashboardStatsResponse } from "@/types";
 
-// ===== Query Keys Factory =====
 export const dashboardKeys = {
-  all: ['dashboard'] as const,
-  stats: () => [...dashboardKeys.all, 'stats'] as const,
+  all: ["dashboard"] as const,
+  stats: () => [...dashboardKeys.all, "stats"] as const,
 };
 
-export function useDashboardStatsQuery() {
-  return useQuery({
+export function useDashboardStats() {
+  return useQuery<DashboardStatsResponse>({
     queryKey: dashboardKeys.stats(),
-    queryFn: async (): Promise<DashboardStatsResponse> => {
-      const response = await api.get<DashboardStatsResponse>('/dashboard/stats');
-      return response.data;
+    queryFn: async () => {
+      const res = await api.get("/dashboard/stats");
+      return res.data;
     },
-    staleTime: 30 * 1000,
   });
 }

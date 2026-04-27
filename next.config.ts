@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Proxy /api/v1/* requests to Spring Boot backend in local dev
+  // When using Caddy gateway, XTransformPort handles routing instead
   async rewrites() {
     return [
       {
