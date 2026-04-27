@@ -1,54 +1,43 @@
-'use client';
+"use client";
 
-import { memo, useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { KeyRound } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
-interface TokenTimerProps {
-  expiry: number | null;
-}
-
-function computeRemaining(expiry: number | null): string {
-  if (!expiry) return '--:--';
-  const diff = expiry - Date.now();
-  if (diff <= 0) return 'Expired';
-  const minutes = Math.floor(diff / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function TokenTimerInner({ expiry }: TokenTimerProps) {
-  const [remaining, setRemaining] = useState<string>(() => computeRemaining(expiry));
+export default function TokenTimer() {
+  const { auth } = useAuth();
+  const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
-    const update = () => {
-      setRemaining(computeRemaining(expiry));
-    };
+    if (!auth?.tokenExpiry) return;
 
-    update();
-    const interval = setInterval(update, 1000);
+    const interval = setInterval(() => {
+      const remaining = auth.tokenExpiry - Date.now();
+      if (remaining <= 0) {
+        setTimeLeft("Expired");
+        clearInterval(interval);
+        return;
+      }
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      setTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [expiry]);
+  }, [auth?.tokenExpiry]);
 
-  const isExpired = remaining === 'Expired';
-  const isLow = !isExpired && remaining !== '--:--' && parseInt(remaining.split(':')[0]) < 5;
+  if (!auth?.isAuthenticated) return null;
+
+  const isLow = timeLeft !== "" && timeLeft !== "Expired" && parseInt(timeLeft.split(":")[0]) < 5;
 
   return (
-    <Badge
-      variant={isExpired ? 'destructive' : isLow ? 'outline' : 'secondary'}
-      className={`font-mono text-xs gap-1 ${
-        isExpired ? 'bg-red-100 text-red-700 border-red-200' :
-        isLow ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-        'bg-muted text-muted-foreground'
+    <span
+      className={`text-xs font-mono px-2 py-1 rounded-md ${
+        isLow
+          ? "bg-destructive/10 text-destructive"
+          : "bg-muted text-muted-foreground"
       }`}
-      title="Access token time remaining"
     >
-      <KeyRound className="h-3 w-3" />
-      {remaining}
-    </Badge>
+      ⏱ {timeLeft || "..."}
+    </span>
   );
 }
-
-const TokenTimer = memo(TokenTimerInner);
-TokenTimer.displayName = 'TokenTimer';
-export default TokenTimer;

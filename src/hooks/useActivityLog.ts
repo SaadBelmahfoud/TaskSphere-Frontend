@@ -1,21 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { ActivityLogPageResponse } from '@/types';
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type { ActivityLogPageResponse } from "@/types";
 
-// ===== Query Keys Factory =====
-export const activityLogKeys = {
-  all: ['activities'] as const,
-  list: (params: { page: number; size: number; taskId?: string }) =>
-    [...activityLogKeys.all, params] as const,
-};
-
-export function useActivityLogQuery(params: { page: number; size: number; taskId?: string }) {
-  return useQuery({
-    queryKey: activityLogKeys.list(params),
-    queryFn: async (): Promise<ActivityLogPageResponse> => {
-      const response = await api.get<ActivityLogPageResponse>('/activities', { params });
-      return response.data;
+export function useActivityLog(page: number = 0, size: number = 20, taskId?: string) {
+  return useQuery<ActivityLogPageResponse>({
+    queryKey: ["activities", page, size, taskId],
+    queryFn: async () => {
+      const params: Record<string, string | number> = { page, size };
+      if (taskId) params.taskId = taskId;
+      const res = await api.get("/activities", { params });
+      return res.data;
     },
-    staleTime: 0,
   });
 }

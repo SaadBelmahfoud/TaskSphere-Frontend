@@ -1,73 +1,65 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import api from '@/lib/api';
-import { CommentResponse, CommentCreateRequest } from '@/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type { CommentResponse, CommentCreateRequest, CommentUpdateRequest } from "@/types";
+import { toast } from "sonner";
 
-// ===== Query Keys Factory =====
-export const commentKeys = {
-  all: ['comments'] as const,
-  byTask: () => [...commentKeys.all, 'byTask'] as const,
-  taskComments: (taskId: string) => [...commentKeys.byTask(), taskId] as const,
-};
-
-// ===== API functions =====
-
-export async function getTaskComments(taskId: string): Promise<CommentResponse[]> {
-  const response = await api.get<CommentResponse[]>(`/tasks/${taskId}/comments`);
-  return response.data;
-}
-
-export async function createComment(
-  taskId: string,
-  data: CommentCreateRequest
-): Promise<CommentResponse> {
-  const response = await api.post<CommentResponse>(`/tasks/${taskId}/comments`, data);
-  return response.data;
-}
-
-export async function deleteComment(commentId: string): Promise<void> {
-  await api.delete(`/comments/${commentId}`);
-}
-
-// ===== TanStack Query Hooks =====
-
-export function useTaskCommentsQuery(taskId: string) {
-  return useQuery({
-    queryKey: commentKeys.taskComments(taskId),
-    queryFn: () => getTaskComments(taskId),
+export function useComments(taskId: string) {
+  return useQuery<CommentResponse[]>({
+    queryKey: ["comments", taskId],
+    queryFn: async () => {
+      const res = await api.get(`/tasks/${taskId}/comments`);
+      return res.data;
+    },
     enabled: !!taskId,
-    staleTime: 0,
   });
 }
 
-export function useCreateCommentMutation(taskId: string) {
-  const queryClient = useQueryClient();
+export function useCreateComment(taskId: string) {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CommentCreateRequest) => createComment(taskId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: commentKeys.taskComments(taskId) });
-      toast.success('Comment added');
+    mutationFn: async (data: CommentCreateRequest) => {
+      const res = await api.post(`/tasks/${taskId}/comments`, data);
+      return res.data as CommentResponse;
     },
-    onError: (error) => {
-      toast.error('Error adding comment', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", taskId] });
+      toast.success("Comment added");
+    },
+    onError: () => {
+      toast.error("Failed to add comment");
     },
   });
 }
 
-export function useDeleteCommentMutation(taskId: string) {
-  const queryClient = useQueryClient();
+export function useUpdateComment(taskId: string) {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: deleteComment,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: commentKeys.taskComments(taskId) });
-      toast.success('Comment deleted');
+    mutationFn: async ({ commentId, data }: { commentId: string; data: CommentUpdateRequest }) => {
+      const res = await api.put(`/comments/${commentId}`, data);
+      return res.data as CommentResponse;
     },
-    onError: (error) => {
-      toast.error('Error deleting comment', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", taskId] });
+      toast.success("Comment updated");
+    },
+    onError: () => {
+      toast.error("Failed to update comment");
+    },
+  });
+}
+
+export function useDeleteComment(taskId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (commentId: string) => {
+      await api.delete(`/comments/${commentId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", taskId] });
+      toast.success("Comment deleted");
+    },
+    onError: () => {
+      toast.error("Failed to delete comment");
     },
   });
 }

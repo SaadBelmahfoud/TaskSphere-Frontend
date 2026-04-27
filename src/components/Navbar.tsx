@@ -1,152 +1,170 @@
-'use client';
+"use client";
 
-import { memo } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
-import TokenTimer from './TokenTimer';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { LogOut, ClipboardList, Shield, Columns3, Sun, Moon, BarChart3, ShieldCheck } from 'lucide-react';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "next-themes";
+import TokenTimer from "./TokenTimer";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  LayoutDashboard,
+  ListTodo,
+  Columns3,
+  Shield,
+  Activity,
+  LogOut,
+  Moon,
+  Sun,
+  Menu,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-  { label: 'My Tasks', href: '/tasks', icon: ClipboardList },
-  { label: 'Kanban', href: '/kanban', icon: Columns3 },
-  { label: 'Ownership', href: '/ownership', icon: Shield },
+const navLinks = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tasks", label: "Tasks", icon: ListTodo },
+  { href: "/kanban", label: "Kanban", icon: Columns3 },
+  { href: "/activities", label: "Activity", icon: Activity },
+  { href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
 
-const adminNavItem = { label: 'Admin', href: '/admin', icon: ShieldCheck };
-
-function NavbarInner() {
+export default function Navbar() {
   const { auth, logout } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  if (!auth?.isAuthenticated) return null;
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+  const isAdmin = auth.role === "ADMIN";
+  const initials = auth.email
+    ? auth.email.substring(0, 2).toUpperCase()
+    : "U";
+
+  const filteredLinks = navLinks.filter((l) => !l.adminOnly || isAdmin);
 
   return (
-    <nav className="bg-card border-b shadow-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center gap-8">
-            <button
-              onClick={() => router.push('/tasks')}
-              className="text-xl font-bold text-primary hover:text-primary/80 transition-colors"
-            >
-              TaskSphere
-            </button>
-            <div className="hidden sm:flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Button
-                    key={item.href}
-                    variant={isActive ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => router.push(item.href)}
-                    className={isActive ? 'text-primary' : ''}
-                  >
-                    <Icon className="h-4 w-4 mr-1.5" />
-                    {item.label}
-                  </Button>
-                );
-              })}
-              {auth.role === 'ADMIN' && (() => {
-                const Icon = adminNavItem.icon;
-                const isActive = pathname === adminNavItem.href;
-                return (
-                  <Button
-                    key={adminNavItem.href}
-                    variant={isActive ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => router.push(adminNavItem.href)}
-                    className={isActive ? 'text-primary' : 'text-red-600 hover:text-red-700'}
-                  >
-                    <Icon className="h-4 w-4 mr-1.5" />
-                    {adminNavItem.label}
-                  </Button>
-                );
-              })()}
-            </div>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto flex h-14 max-w-7xl items-center px-4 gap-4">
+        {/* Logo */}
+        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg mr-2 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground text-sm font-bold">TS</span>
           </div>
+          <span className="hidden sm:inline">TaskSphere</span>
+        </Link>
 
-          <div className="flex items-center gap-3">
-            <TokenTimer expiry={auth.tokenExpiry} />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="h-8 w-8"
-              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm font-medium text-foreground">{auth.email}</span>
-              <Badge variant="secondary" className="text-xs">
-                {auth.role}
-              </Badge>
-            </div>
-
-            <Button variant="outline" size="sm" onClick={handleLogout} className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive">
-              <LogOut className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
-          </div>
-        </div>
-
-        <div className="sm:hidden flex gap-1 pb-2 flex-wrap">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 flex-1">
+          {filteredLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
             return (
-              <Button
-                key={item.href}
-                variant={isActive ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => router.push(item.href)}
-                className={`flex-1 text-xs ${isActive ? 'text-primary' : ''}`}
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
               >
-                <Icon className="h-4 w-4 mr-1" />
-                {item.label}
-              </Button>
+                <Icon className="h-4 w-4" />
+                {link.label}
+              </Link>
             );
           })}
-          {auth.role === 'ADMIN' && (() => {
-            const Icon = adminNavItem.icon;
-            const isActive = pathname === adminNavItem.href;
-            return (
-              <Button
-                key={adminNavItem.href}
-                variant={isActive ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => router.push(adminNavItem.href)}
-                className={`flex-1 text-xs ${isActive ? 'text-primary' : 'text-red-600 hover:text-red-700'}`}
-              >
-                <Icon className="h-4 w-4 mr-1" />
-                {adminNavItem.label}
+        </nav>
+
+        {/* Right side */}
+        <div className="flex items-center gap-2 ml-auto">
+          <TokenTimer />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="h-8 w-8"
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
               </Button>
-            );
-          })()}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="flex items-center gap-2 p-2">
+                <div className="flex flex-col space-y-1 leading-none">
+                  <p className="font-medium text-sm">{auth.email}</p>
+                  <p className="text-xs text-muted-foreground">{auth.role}</p>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Mobile hamburger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-8 w-8"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
-    </nav>
+
+      {/* Mobile nav */}
+      {mobileOpen && (
+        <div className="md:hidden border-t bg-background">
+          <nav className="flex flex-col p-2 gap-1">
+            {filteredLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
+    </header>
   );
 }
-
-const Navbar = memo(NavbarInner);
-Navbar.displayName = 'Navbar';
-export default Navbar;

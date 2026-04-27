@@ -1,243 +1,462 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import AppLayout from '@/components/AppLayout';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import { useAuth } from '@/context/AuthContext';
-import { useAllUsersQuery, useUpdateUserRoleMutation, useToggleUserStatusMutation } from '@/hooks/useAdmin';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle, XCircle, ShieldAlert, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import AppLayout from "@/components/AppLayout";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { useAdminUsers, useChangeRole, useToggleUserStatus } from "@/hooks/useAdmin";
+import type { UserRole, UserAdminResponse } from "@/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Shield,
+  Users,
+  UserCog,
+  Search,
+  LayoutGrid,
+  List,
+  CalendarDays,
+  UserCheck,
+  Crown,
+  ShieldCheck,
+} from "lucide-react";
 
-const roleVariant: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string }> = {
-  ADMIN: { variant: 'destructive', className: 'bg-red-100 text-red-700 border-red-200' },
-  MANAGER: { variant: 'default', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  USER: { variant: 'secondary', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+const roleVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  ADMIN: "default",
+  MANAGER: "secondary",
+  USER: "outline",
 };
 
-const roleLabels: Record<string, string> = {
-  ADMIN: 'Admin',
-  MANAGER: 'Manager',
-  USER: 'User',
+const roleColors: Record<string, string> = {
+  ADMIN: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  MANAGER: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  USER: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function formatRelativeTime(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 30) return `${diffDays}d ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+    return `${Math.floor(diffDays / 365)}y ago`;
+  } catch {
+    return "";
+  }
+}
 
 export default function AdminPage() {
   const { auth } = useAuth();
   const router = useRouter();
-  const [confirmTarget, setConfirmTarget] = useState<{ userId: string; username: string; currentStatus: boolean } | null>(null);
+  const { data: users, isLoading } = useAdminUsers();
+  const changeRole = useChangeRole();
+  const toggleStatus = useToggleUserStatus();
 
-  const { data: users, isLoading, isError } = useAllUsersQuery();
-  const updateRoleMutation = useUpdateUserRoleMutation();
-  const toggleStatusMutation = useToggleUserStatusMutation();
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [viewMode, setViewMode] = useState<"card" | "table">("card");
 
-  // Redirect non-admin users
   useEffect(() => {
-    if (!auth.isLoading && auth.role !== 'ADMIN') {
-      router.push('/tasks');
+    if (!auth?.isAuthenticated) {
+      router.replace("/");
+    } else if (auth.role !== "ADMIN") {
+      router.replace("/tasks");
     }
-  }, [auth.role, auth.isLoading, router]);
+  }, [auth, router]);
 
-  const handleRoleChange = (userId: string, newRole: string) => {
-    updateRoleMutation.mutate({ userId, role: newRole });
-  };
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    let result = users;
 
-  const handleToggleStatus = () => {
-    if (!confirmTarget) return;
-    toggleStatusMutation.mutate(confirmTarget.userId, {
-      onSuccess: () => setConfirmTarget(null),
-    });
-  };
+    // Role filter
+    if (roleFilter !== "ALL") {
+      result = result.filter((u) => u.role === roleFilter);
+    }
 
-  const formatUserStatus = (enabled: boolean) => {
-    return enabled ? (
-      <Badge variant="default" className="bg-emerald-100 text-emerald-700 border-emerald-200">
-        <CheckCircle className="h-3 w-3 mr-1" />
-        Active
-      </Badge>
-    ) : (
-      <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
-        <XCircle className="h-3 w-3 mr-1" />
-        Disabled
-      </Badge>
-    );
-  };
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(
+        (u) =>
+          u.firstName?.toLowerCase().includes(q) ||
+          u.lastName?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q) ||
+          u.username?.toLowerCase().includes(q)
+      );
+    }
 
-  // Don't render anything while checking auth
-  if (auth.isLoading || auth.role !== 'ADMIN') {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-16">
-          <Skeleton className="h-8 w-48" />
-        </div>
-      </AppLayout>
-    );
-  }
+    return result;
+  }, [users, roleFilter, search]);
+
+  const stats = useMemo(() => {
+    if (!users) return { total: 0, active: 0, admins: 0, managers: 0 };
+    return {
+      total: users.length,
+      active: users.filter((u) => u.enabled).length,
+      admins: users.filter((u) => u.role === "ADMIN").length,
+      managers: users.filter((u) => u.role === "MANAGER").length,
+    };
+  }, [users]);
+
+  if (!auth?.isAuthenticated || auth.role !== "ADMIN") return null;
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-red-500" />
-            Administration
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            User and role management
-          </p>
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Shield className="h-7 w-7 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Admin Panel</h1>
+            <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+          </div>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-48" />
-                    </div>
-                    <Skeleton className="h-8 w-24" />
-                    <Skeleton className="h-8 w-20" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : isError ? (
-          <Card className="border-destructive/50">
-            <CardContent className="p-6 text-center">
-              <p className="text-destructive">
-                Error loading users
-              </p>
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Users</p>
+                  <p className="text-2xl font-bold mt-1">{stats.total}</p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500/30" />
+              </div>
             </CardContent>
           </Card>
-        ) : (
+          <Card className="border-l-4 border-l-emerald-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active</p>
+                  <p className="text-2xl font-bold mt-1">{stats.active}</p>
+                </div>
+                <UserCheck className="h-8 w-8 text-emerald-500/30" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-amber-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admins</p>
+                  <p className="text-2xl font-bold mt-1">{stats.admins}</p>
+                </div>
+                <Crown className="h-8 w-8 text-amber-500/30" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-violet-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Managers</p>
+                  <p className="text-2xl font-bold mt-1">{stats.managers}</p>
+                </div>
+                <ShieldCheck className="h-8 w-8 text-violet-500/30" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Toolbar: Search + Role Filter + View Toggle */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="relative flex-1 w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or username..."
+              className="pl-9 h-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-full sm:w-[160px] h-9">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Roles</SelectItem>
+              <SelectItem value="USER">User</SelectItem>
+              <SelectItem value="MANAGER">Manager</SelectItem>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="hidden md:flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "card" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-9 rounded-r-none"
+              onClick={() => setViewMode("card")}
+              aria-label="Card view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-9 rounded-l-none"
+              onClick={() => setViewMode("table")}
+              aria-label="Table view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Results count */}
+        {search.trim() || roleFilter !== "ALL" ? (
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredUsers.length} of {users?.length ?? 0} users
+          </p>
+        ) : null}
+
+        {/* Content */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-52 rounded-lg" />
+            ))}
+          </div>
+        ) : filteredUsers.length > 0 ? (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {users?.length ?? 0} user{users?.length !== 1 ? 's' : ''} registered
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {users && users.length > 0 ? (
-                users.map((user) => {
-                  const role = roleVariant[user.role] || roleVariant.USER;
-                  return (
-                    <Card key={user.id}>
-                      <CardContent className="p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                          {/* Avatar */}
-                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <Users className="h-5 w-5 text-muted-foreground" />
-                          </div>
-
-                          {/* User info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">
+            {/* Card View — always visible on mobile, toggleable on desktop */}
+            <div className={viewMode === "card" ? "" : "hidden md:hidden"}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredUsers.map((user: UserAdminResponse) => (
+                  <Card key={user.id} className={`overflow-hidden transition-shadow hover:shadow-md ${!user.enabled ? "opacity-60" : ""}`}>
+                    <CardContent className="p-5 space-y-4">
+                      {/* User header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-11 w-11 shrink-0">
+                            <AvatarFallback className={`${user.enabled ? "bg-primary/10" : "bg-muted"}`}>
+                              {user.firstName?.[0]?.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm truncate">
                               {user.firstName} {user.lastName}
-                              <span className="text-muted-foreground font-normal ml-1">
-                                (@{user.username})
-                              </span>
                             </p>
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                          </div>
-
-                          {/* Role */}
-                          <div className="flex items-center gap-2">
-                            <Badge variant={role.variant} className={role.className}>
-                              {roleLabels[user.role] || user.role}
-                            </Badge>
-                            <select
-                              value={user.role}
-                              onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                              disabled={updateRoleMutation.isPending}
-                              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                            >
-                              <option value="USER">User</option>
-                              <option value="MANAGER">Manager</option>
-                              <option value="ADMIN">Admin</option>
-                            </select>
-                          </div>
-
-                          {/* Status + Actions */}
-                          <div className="flex items-center gap-2">
-                            {formatUserStatus(user.enabled)}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setConfirmTarget({
-                                  userId: user.id,
-                                  username: user.username,
-                                  currentStatus: user.enabled,
-                                })
-                              }
-                              disabled={toggleStatusMutation.isPending}
-                              className={
-                                user.enabled
-                                  ? 'text-red-600 border-red-200 hover:bg-red-50'
-                                  : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50'
-                              }
-                            >
-                              {user.enabled ? (
-                                <>
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Disable</span>
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  <span className="hidden sm:inline">Enable</span>
-                                </>
-                              )}
-                            </Button>
+                            <p className="text-xs text-muted-foreground/70 truncate">@{user.username}</p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground">No registered users</p>
-                  </CardContent>
-                </Card>
-              )}
+                        <Badge
+                          className={`shrink-0 text-xs font-semibold ${roleColors[user.role] || ""}`}
+                          variant={roleVariant[user.role] || "outline"}
+                        >
+                          {user.role}
+                        </Badge>
+                      </div>
+
+                      {/* Join date */}
+                      {user.createdAt && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          <span>Joined {formatDate(user.createdAt)}</span>
+                          <span className="text-muted-foreground/60">({formatRelativeTime(user.createdAt)})</span>
+                        </div>
+                      )}
+
+                      {/* Last login */}
+                      {user.lastLogin && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <UserCheck className="h-3.5 w-3.5" />
+                          <span>Last active {formatRelativeTime(user.lastLogin)}</span>
+                        </div>
+                      )}
+
+                      {/* Divider */}
+                      <div className="border-t" />
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-xs text-muted-foreground shrink-0">Role:</span>
+                          <Select
+                            value={user.role}
+                            onValueChange={(val) =>
+                              changeRole.mutate({ userId: user.id, role: val as UserRole })
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs flex-1 min-w-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="USER">User</SelectItem>
+                              <SelectItem value="MANAGER">Manager</SelectItem>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <ConfirmDialog
+                          trigger={
+                            <Button
+                              variant={user.enabled ? "destructive" : "default"}
+                              size="sm"
+                              className="h-8 text-xs shrink-0"
+                            >
+                              <UserCog className="mr-1 h-3.5 w-3.5" />
+                              {user.enabled ? "Disable" : "Enable"}
+                            </Button>
+                          }
+                          title={`${user.enabled ? "Disable" : "Enable"} User`}
+                          description={`Are you sure you want to ${user.enabled ? "disable" : "enable"} ${user.firstName} ${user.lastName}?`}
+                          onConfirm={() => toggleStatus.mutate(user.id)}
+                          confirmText={user.enabled ? "Disable" : "Enable"}
+                          variant={user.enabled ? "destructive" : "default"}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Table View — hidden on mobile, toggleable on desktop */}
+            <div className={`hidden md:block ${viewMode === "table" ? "" : "hidden"}`}>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Joined</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user: UserAdminResponse) => (
+                        <TableRow key={user.id} className={!user.enabled ? "opacity-60" : ""}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className={user.enabled ? "bg-primary/10" : "bg-muted"}>
+                                  {user.firstName?.[0]?.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {user.firstName} {user.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">@{user.username}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                          <TableCell>
+                            <Badge
+                              className={`text-xs font-semibold ${roleColors[user.role] || ""}`}
+                              variant={roleVariant[user.role] || "outline"}
+                            >
+                              {user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.enabled ? "outline" : "destructive"} className="text-xs">
+                              {user.enabled ? "Active" : "Disabled"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {formatDate(user.createdAt)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Select
+                                value={user.role}
+                                onValueChange={(val) =>
+                                  changeRole.mutate({ userId: user.id, role: val as UserRole })
+                                }
+                              >
+                                <SelectTrigger className="h-8 text-xs w-[110px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="USER">User</SelectItem>
+                                  <SelectItem value="MANAGER">Manager</SelectItem>
+                                  <SelectItem value="ADMIN">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <ConfirmDialog
+                                trigger={
+                                  <Button
+                                    variant={user.enabled ? "destructive" : "default"}
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                  >
+                                    <UserCog className="mr-1 h-3.5 w-3.5" />
+                                    {user.enabled ? "Disable" : "Enable"}
+                                  </Button>
+                                }
+                                title={`${user.enabled ? "Disable" : "Enable"} User`}
+                                description={`Are you sure you want to ${user.enabled ? "disable" : "enable"} ${user.firstName} ${user.lastName}?`}
+                                onConfirm={() => toggleStatus.mutate(user.id)}
+                                confirmText={user.enabled ? "Disable" : "Enable"}
+                                variant={user.enabled ? "destructive" : "default"}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </div>
           </>
+        ) : (
+          <div className="text-center py-16 text-muted-foreground">
+            <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
+            <p className="text-lg font-medium">No users found</p>
+            {(search.trim() || roleFilter !== "ALL") && (
+              <p className="text-sm mt-1">Try adjusting your search or filter criteria</p>
+            )}
+          </div>
         )}
       </div>
-
-      <ConfirmDialog
-        isOpen={!!confirmTarget}
-        title={
-          confirmTarget?.currentStatus
-            ? 'Disable user'
-            : 'Re-enable user'
-        }
-        message={
-          confirmTarget
-            ? confirmTarget.currentStatus
-              ? `Are you sure you want to disable user @${confirmTarget.username}? They will not be able to log in.`
-              : `Are you sure you want to re-enable user @${confirmTarget.username}?`
-            : ''
-        }
-        confirmLabel={
-          confirmTarget?.currentStatus ? 'Disable' : 'Enable'
-        }
-        onConfirm={handleToggleStatus}
-        onCancel={() => setConfirmTarget(null)}
-        isLoading={toggleStatusMutation.isPending}
-      />
     </AppLayout>
   );
 }

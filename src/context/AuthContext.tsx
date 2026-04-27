@@ -1,219 +1,141 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import api, { setRefreshCallback, setTokenUpdateCallback, refreshApi } from '@/lib/api';
-import { isApiError } from '@/types';
-import { AuthState, LoginRequest, LoginResponse } from '@/types';
+import React, { createContext, useContext, useState, useCallback } from "react";
+import type { AuthState, LoginRequest, RegisterRequest } from "@/types";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 interface AuthContextType {
-  auth: AuthState;
-  login: (email: string, password: string) => Promise<void>;
+  auth: AuthState | null;
+  login: (data: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
-  isLoading: boolean;
-  error: string | null;
-  clearError: () => void;
+  updateAuth: (updates: Partial<AuthState>) => void;
 }
 
-const defaultAuth: AuthState = {
-  accessToken: null,
-  refreshToken: null,
-  email: null,
-  role: null,
-  isAuthenticated: false,
-  tokenExpiry: null,
-};
+const AUTH_KEY = "tasksphere_auth";
 
-const AuthContext = createContext<AuthContextType>({
-  auth: defaultAuth,
-  login: async () => {},
-  logout: async () => {},
-  isLoading: false,
-  error: null,
-  clearError: () => {},
-});
-
-const AUTH_STORAGE_KEY = 'tasksphere_auth';
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>(defaultAuth);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-
-  // ===== Hydrate from localStorage on mount =====
-  useEffect(() => {
+function loadStoredAuth(): AuthState | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(AUTH_KEY);
+  if (stored) {
     try {
-      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as AuthState;
-        if (parsed.accessToken && parsed.tokenExpiry && parsed.tokenExpiry > Date.now()) {
-          setAuth(parsed);
-        } else {
-          localStorage.removeItem(AUTH_STORAGE_KEY);
-        }
+      const parsed = JSON.parse(stored);
+      if (parsed.isAuthenticated && parsed.tokenExpiry > Date.now()) {
+        return parsed;
       }
+      localStorage.removeItem(AUTH_KEY);
     } catch {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
+      localStorage.removeItem(AUTH_KEY);
     }
-  }, []);
+  }
+  return null;
+}
 
-  // ===== Update state + localStorage =====
-  const updateAuth = useCallback((newAuth: AuthState) => {
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [auth, setAuth] = useState<AuthState | null>(loadStoredAuth);
+
+  const persistAuth = (newAuth: AuthState) => {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(newAuth));
     setAuth(newAuth);
-    if (newAuth.isAuthenticated) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newAuth));
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-  }, []);
+  };
 
-  // ===== Clear React Query cache =====
-  const clearQueryCache = useCallback(() => {
+  const login = useCallback(async (data: LoginRequest) => {
+    const res = await api.post("/auth/login", data);
+    const { accessToken, refreshToken, tokenType, expiresIn } = res.data;
+    const tokenExpiry = Date.now() + (expiresIn || 3600) * 1000;
+
+    // Decode JWT to get email and role
+    let email = data.email;
+    let username: string | null = null;
+    let role = "USER";
     try {
-      window.dispatchEvent(new CustomEvent('auth-change', { detail: { clearCache: true } }));
+      const payload = JSON.parse(atob(accessToken.split(".")[1]));
+      email = payload.sub || payload.email || data.email;
+      username = payload.username || payload.preferred_username || null;
+      role = payload.role || payload.authorities?.[0]?.authority || "USER";
+      if (role.startsWith("ROLE_")) role = role.replace("ROLE_", "");
     } catch {
-      // Ignore
+      // fallback to defaults
     }
+
+    const newAuth: AuthState = {
+      accessToken,
+      refreshToken,
+      email,
+      username,
+      role,
+      isAuthenticated: true,
+      tokenExpiry,
+    };
+
+    persistAuth(newAuth);
+    toast.success("Welcome back!");
   }, []);
 
-  // ===== Refresh token callback =====
-  useEffect(() => {
-    setRefreshCallback(async () => {
-      try {
-        const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (!stored) return null;
+  const register = useCallback(async (data: RegisterRequest) => {
+    const res = await api.post("/auth/register", data);
+    const { accessToken, refreshToken, expiresIn } = res.data;
+    const tokenExpiry = Date.now() + (expiresIn || 3600) * 1000;
 
-        const parsed = JSON.parse(stored) as AuthState;
-        if (!parsed.refreshToken) return null;
-
-        // Use refreshApi (SEPARATE instance, WITHOUT Bearer interceptor)
-        const response = await refreshApi.post<LoginResponse>('/auth/refresh', {
-          refreshToken: parsed.refreshToken,
-        });
-
-        if (!response.data?.accessToken) return null;
-
-        const expiresInMs = parseInt(response.data.expiresIn, 10) * 1000 || 3600_000;
-        const newAuth: AuthState = {
-          accessToken: response.data.accessToken,
-          refreshToken: response.data.refreshToken,
-          email: parsed.email,
-          role: parsed.role,
-          isAuthenticated: true,
-          tokenExpiry: Date.now() + expiresInMs,
-        };
-
-        updateAuth(newAuth);
-        return newAuth;
-      } catch {
-        return null;
-      }
-    });
-
-    setTokenUpdateCallback((newAuth: AuthState) => {
-      updateAuth(newAuth);
-    });
-
-    return () => {
-      setRefreshCallback(null);
-      setTokenUpdateCallback(null);
-    };
-  }, [updateAuth]);
-
-  // ===== LOGIN =====
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-
+    let email = data.email;
+    let username: string | null = null;
+    let role = "USER";
     try {
-      const response = await api.post<LoginResponse>('/auth/login', {
-        email,
-        password,
-      } satisfies LoginRequest);
-
-      if (!response.data?.accessToken || !response.data?.refreshToken) {
-        throw new Error('Invalid login response: missing token');
-      }
-
-      // Decode JWT to extract email + role
-      let emailFromToken = email;
-      let roleFromToken = 'USER';
-      try {
-        const base64Payload = response.data.accessToken.split('.')[1];
-        const payload = JSON.parse(atob(base64Payload));
-        emailFromToken = payload.sub || email;
-        roleFromToken = payload.role || 'USER';
-      } catch {
-        // JWT decode failed, keep defaults
-      }
-
-      const expiresInMs = parseInt(response.data.expiresIn, 10) * 1000 || 3600_000;
-      const newAuth: AuthState = {
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken,
-        email: emailFromToken,
-        role: roleFromToken,
-        isAuthenticated: true,
-        tokenExpiry: Date.now() + expiresInMs,
-      };
-
-      clearQueryCache();
-      updateAuth(newAuth);
-      toast.success(`Welcome, ${emailFromToken}!`, {
-        description: `Logged in as ${roleFromToken}`,
-      });
-      router.push('/dashboard');
-    } catch (err: unknown) {
-      const message = isApiError(err)
-        ? err.response.data.error || err.response.data.message || 'Server error'
-        : err instanceof Error
-          ? err.message
-          : 'Connection error';
-      setError(message);
-      toast.error('Login failed', { description: message });
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
+      const payload = JSON.parse(atob(accessToken.split(".")[1]));
+      email = payload.sub || payload.email || data.email;
+      username = payload.username || payload.preferred_username || null;
+      role = payload.role || payload.authorities?.[0]?.authority || "USER";
+      if (role.startsWith("ROLE_")) role = role.replace("ROLE_", "");
+    } catch {
+      // fallback
     }
-  }, [router, updateAuth, clearQueryCache]);
 
-  // ===== LOGOUT =====
+    const newAuth: AuthState = {
+      accessToken,
+      refreshToken,
+      email,
+      username,
+      role,
+      isAuthenticated: true,
+      tokenExpiry,
+    };
+
+    persistAuth(newAuth);
+    toast.success("Account created successfully!");
+  }, []);
+
   const logout = useCallback(async () => {
     try {
-      if (auth.refreshToken) {
-        await refreshApi.post('/auth/logout', {
-          refreshToken: auth.refreshToken,
-        });
-      }
+      await api.post("/auth/logout");
     } catch {
-      // Server might be unreachable, clean up anyway
-    } finally {
-      clearQueryCache();
-      updateAuth(defaultAuth);
-      toast.info('Logged out', { description: 'See you soon!' });
-      router.push('/');
+      // ignore logout errors
     }
-  }, [auth.refreshToken, router, updateAuth, clearQueryCache]);
+    localStorage.removeItem(AUTH_KEY);
+    setAuth(null);
+    toast.info("Logged out");
+  }, []);
 
-  const clearError = useCallback(() => setError(null), []);
+  const updateAuth = useCallback((updates: Partial<AuthState>) => {
+    setAuth((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem(AUTH_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ auth, login, logout, isLoading, error, clearError }}>
+    <AuthContext.Provider value={{ auth, login, register, logout, updateAuth }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }
-
-export default AuthContext;
