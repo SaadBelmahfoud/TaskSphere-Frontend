@@ -12,6 +12,31 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PAGE D'INSCRIPTION — RegisterPage
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * CORRESPONDANCE AVEC LE BACKEND :
+ * ─────────────────────────────────
+ * Endpoint : POST /api/v1/auth/register
+ * Body (RegisterRequest) : { username, firstName, lastName, email, password, confirmPassword }
+ * Réponse (201) : { "message", "accessToken", "refreshToken", "tokenType", "expiresIn",
+ *                   "user": { "username", "email", "role" } }
+ * Erreur (400) : { "error": "Les mots de passe ne correspondent pas" }
+ * Erreur (409) : { "error": "Un compte avec cet email ou ce nom d'utilisateur existe déjà" }
+ * Erreur Jakarta : { "message": "Validation failed", ... }
+ *
+ * VALIDATION DOUBLE (Client Zod + Serveur Jakarta) :
+ * ────────────────────────────────────────────────────
+ * Le frontend valide avec Zod (instantané, pas de latence réseau).
+ * Le backend valide avec Jakarta @Valid (sécurité, ne jamais faire confiance au client).
+ * Les règles sont identiques des deux côtés :
+ * - username : 3-50 caractères
+ * - email : format valide
+ * - password : min 6 caractères
+ * - confirmPassword : doit correspondre à password
+ */
 export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
@@ -47,8 +72,13 @@ export default function RegisterPage() {
       await register(form);
       router.push("/dashboard");
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setServerError(error.response?.data?.message || "Registration failed. Please try again.");
+      // Extraction du message d'erreur du backend
+      const error = err as { response?: { data?: { error?: string; message?: string } } };
+      const errorMsg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Registration failed. Please try again.";
+      setServerError(errorMsg);
     } finally {
       setLoading(false);
     }

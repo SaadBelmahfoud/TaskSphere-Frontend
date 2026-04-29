@@ -12,6 +12,30 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PAGE DE CONNEXION — LoginPage
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * FLUX COMPLET :
+ * ──────────────
+ * 1. L'utilisateur saisit email + mot de passe
+ * 2. Validation côté client (Zod : email valide, password ≥ 6 chars)
+ * 3. Appel POST /api/v1/auth/login { email, password }
+ * 4. Succès → stockage JWT → redirection /dashboard
+ * 5. Échec → affichage du message d'erreur du backend
+ *
+ * GESTION DES ERREURS :
+ * ──────────────────────
+ * Le backend retourne les erreurs au format : { "error": "message" }
+ * - 401 : "Email ou mot de passe incorrect"
+ * - 403 : "Compte désactivé"
+ * - 400 : erreur de validation Jakarta
+ *
+ * RAPPEL : Le backend utilise Map<String, String> comme body de login.
+ * Donc on envoie bien { "email": "...", "password": "..." }.
+ * Le backend fait : loginRequest.get("email") et loginRequest.get("password").
+ */
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -25,6 +49,11 @@ export default function LoginPage() {
     setServerError("");
     setErrors({});
 
+    // ═══════════════════════════════════════════════════════
+    // VALIDATION CÔTÉ CLIENT (Zod)
+    // ═══════════════════════════════════════════════════════
+    // Avant d'envoyer au serveur, on valide localement.
+    // Cela évite des requêtes inutiles et donne un feedback instantané.
     const result = loginSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -40,8 +69,21 @@ export default function LoginPage() {
       await login(form);
       router.push("/dashboard");
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setServerError(error.response?.data?.message || "Invalid email or password");
+      // ═══════════════════════════════════════════════════════
+      // EXTRACTION DU MESSAGE D'ERREUR DU BACKEND
+      // ═══════════════════════════════════════════════════════
+      // Le backend Spring Boot retourne les erreurs dans différents formats :
+      // - AuthController : { "error": "message" } (Map<String, String>)
+      // - GlobalExceptionHandler : { "message": "..." } ou { "error": "..." }
+      // - Jakarta Validation : { "message": "Validation failed", "errors": [...] }
+      //
+      // On essaie d'extraire le message de tous ces formats.
+      const error = err as { response?: { data?: { error?: string; message?: string } } };
+      const errorMsg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Invalid email or password";
+      setServerError(errorMsg);
     } finally {
       setLoading(false);
     }
