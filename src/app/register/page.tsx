@@ -7,36 +7,11 @@ import { registerSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * PAGE D'INSCRIPTION — RegisterPage
- * ═══════════════════════════════════════════════════════════════════
- *
- * CORRESPONDANCE AVEC LE BACKEND :
- * ─────────────────────────────────
- * Endpoint : POST /api/v1/auth/register
- * Body (RegisterRequest) : { username, firstName, lastName, email, password, confirmPassword }
- * Réponse (201) : { "message", "accessToken", "refreshToken", "tokenType", "expiresIn",
- *                   "user": { "username", "email", "role" } }
- * Erreur (400) : { "error": "Les mots de passe ne correspondent pas" }
- * Erreur (409) : { "error": "Un compte avec cet email ou ce nom d'utilisateur existe déjà" }
- * Erreur Jakarta : { "message": "Validation failed", ... }
- *
- * VALIDATION DOUBLE (Client Zod + Serveur Jakarta) :
- * ────────────────────────────────────────────────────
- * Le frontend valide avec Zod (instantané, pas de latence réseau).
- * Le backend valide avec Jakarta @Valid (sécurité, ne jamais faire confiance au client).
- * Les règles sont identiques des deux côtés :
- * - username : 3-50 caractères
- * - email : format valide
- * - password : min 6 caractères
- * - confirmPassword : doit correspondre à password
- */
 export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
@@ -72,13 +47,8 @@ export default function RegisterPage() {
       await register(form);
       router.push("/dashboard");
     } catch (err: unknown) {
-      // Extraction du message d'erreur du backend
-      const error = err as { response?: { data?: { error?: string; message?: string } } };
-      const errorMsg =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        "Registration failed. Please try again.";
-      setServerError(errorMsg);
+      const error = err as { response?: { data?: { message?: string } } };
+      setServerError(error.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -90,117 +60,134 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">TS</span>
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo */}
+        <div className="text-center">
+          <div className="mx-auto mb-4 w-14 h-14 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <span className="text-primary-foreground font-bold text-xl">TS</span>
           </div>
-          <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>Join TaskSphere to manage your tasks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {serverError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                placeholder="johndoe"
-                value={form.username}
-                onChange={(e) => updateField("username", e.target.value)}
-                disabled={loading}
-              />
-              {errors.username && (
-                <p className="text-sm text-destructive">{errors.username}</p>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">Create Account</h1>
+          <p className="text-muted-foreground mt-1">Join TaskSphere to manage your tasks</p>
+        </div>
+
+        <Card className="shadow-lg">
+          <CardContent className="pt-6">
+            {serverError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{serverError}</AlertDescription>
+              </Alert>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="firstName"
-                  placeholder="John"
-                  value={form.firstName}
-                  onChange={(e) => updateField("firstName", e.target.value)}
+                  id="username"
+                  placeholder="johndoe"
+                  value={form.username}
+                  onChange={(e) => updateField("username", e.target.value)}
                   disabled={loading}
+                  className="transition-colors"
+                  autoFocus
                 />
-                {errors.firstName && (
-                  <p className="text-sm text-destructive">{errors.firstName}</p>
+                {errors.username && (
+                  <p className="text-sm text-destructive">{errors.username}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    placeholder="John"
+                    value={form.firstName}
+                    onChange={(e) => updateField("firstName", e.target.value)}
+                    disabled={loading}
+                    className="transition-colors"
+                  />
+                  {errors.firstName && (
+                    <p className="text-sm text-destructive">{errors.firstName}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Doe"
+                    value={form.lastName}
+                    onChange={(e) => updateField("lastName", e.target.value)}
+                    disabled={loading}
+                    className="transition-colors"
+                  />
+                  {errors.lastName && (
+                    <p className="text-sm text-destructive">{errors.lastName}</p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                  disabled={loading}
+                  className="transition-colors"
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  value={form.lastName}
-                  onChange={(e) => updateField("lastName", e.target.value)}
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={(e) => updateField("password", e.target.value)}
                   disabled={loading}
+                  className="transition-colors"
                 />
-                {errors.lastName && (
-                  <p className="text-sm text-destructive">{errors.lastName}</p>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
                 )}
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={(e) => updateField("email", e.target.value)}
-                disabled={loading}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={(e) => updateField("password", e.target.value)}
-                disabled={loading}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                value={form.confirmPassword}
-                onChange={(e) => updateField("confirmPassword", e.target.value)}
-                disabled={loading}
-              />
-              {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-              )}
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/" className="text-primary hover:underline font-medium">
-              Sign in
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.confirmPassword}
+                  onChange={(e) => updateField("confirmPassword", e.target.value)}
+                  disabled={loading}
+                  className="transition-colors"
+                />
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                )}
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                )}
+                Create Account
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="justify-center border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

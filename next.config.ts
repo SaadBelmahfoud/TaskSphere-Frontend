@@ -6,16 +6,18 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Proxy /api/v1/* requests to Spring Boot backend in local dev
-  // When using Caddy gateway, XTransformPort handles routing instead
-  async rewrites() {
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: "http://localhost:8080/api/v1/:path*",
-      },
-    ];
-  },
+  // ═══════════════════════════════════════════════════════════════════
+  // API PROXY — All /api/v1/* requests are proxied to the Spring Boot
+  // backend via the catch-all route handler at:
+  //   src/app/api/v1/[...path]/route.ts
+  //
+  // NOTE: We do NOT use next.config.ts rewrites() here because:
+  //   - rewrites() has HIGHER priority than route handlers
+  //   - rewrites() silently fails with Turbopack in some cases
+  //   - The route handler provides better error handling and logging
+  //
+  // EN DOCKER : set BACKEND_URL=http://backend:8080 in .env
+  // ═══════════════════════════════════════════════════════════════════
 };
 
 export default nextConfig;

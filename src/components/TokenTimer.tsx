@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 
 export default function TokenTimer() {
   const { auth } = useAuth();
@@ -27,15 +28,19 @@ export default function TokenTimer() {
 
   if (!auth?.isAuthenticated) return null;
 
-  const isLow = timeLeft !== "" && timeLeft !== "Expired" && parseInt(timeLeft.split(":")[0]) < 5;
+  const isExpired = timeLeft === "Expired";
+  const isLow = !isExpired && timeLeft !== "" && parseInt(timeLeft.split(":")[0]) < 5;
 
   return (
     <span
-      className={`text-xs font-mono px-2 py-1 rounded-md ${
-        isLow
+      className={cn(
+        "text-xs font-mono px-2 py-1 rounded-md transition-colors",
+        isExpired
           ? "bg-destructive/10 text-destructive"
-          : "bg-muted text-muted-foreground"
-      }`}
+          : isLow
+            ? "bg-amber/10 text-amber animate-pulse"
+            : "bg-muted text-muted-foreground"
+      )}
     >
       ⏱ {timeLeft || "..."}
     </span>

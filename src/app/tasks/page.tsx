@@ -7,6 +7,7 @@ import AppLayout from "@/components/AppLayout";
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import { useTasks, useTaskSearch, useCreateTask } from "@/hooks/useTasks";
+import { useUsers } from "@/hooks/useUsers";
 import type { TaskStatus, TaskPriority, CreateTaskFormData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,11 +26,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, X, ListTodo, LayoutGrid } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function TasksPage() {
   const { auth } = useAuth();
   const router = useRouter();
+  const { data: users } = useUsers();
 
   const [page, setPage] = useState(0);
   const [keyword, setKeyword] = useState("");
@@ -79,6 +82,11 @@ export default function TasksPage() {
   const isFirstPage = (tasks?.number ?? 0) === 0;
   const isLastPage = tasks ? tasks.number >= tasks.totalPages - 1 : true;
 
+  // Build a map of user IDs to names for assignee display
+  // CORRECTION : userMap keyé par email (pas UUID)
+  // car task.assigneeId stocke un email dans le backend
+  const userMap = new Map(users?.map((u) => [u.email, `${u.firstName} ${u.lastName}`]));
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -86,12 +94,19 @@ export default function TasksPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
-            <p className="text-muted-foreground">Manage and track your tasks</p>
+            <p className="text-muted-foreground">
+              Manage and track your tasks
+              {tasks && (
+                <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">
+                  {tasks.totalElements} total
+                </span>
+              )}
+            </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
                 New Task
               </Button>
             </DialogTrigger>
@@ -113,7 +128,7 @@ export default function TasksPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search tasks..."
+              placeholder="Search tasks by title or description..."
               value={keyword}
               onChange={(e) => {
                 setKeyword(e.target.value);
@@ -158,7 +173,7 @@ export default function TasksPage() {
             </SelectContent>
           </Select>
           {hasFilters && (
-            <Button variant="ghost" size="icon" onClick={clearFilters}>
+            <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0">
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -175,7 +190,11 @@ export default function TasksPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {tasks.content.map((task) => (
-                <TaskCard key={task.id} task={task} />
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  assigneeName={task.assigneeId ? userMap.get(task.assigneeId) : undefined}
+                />
               ))}
             </div>
             {/* Pagination */}
@@ -188,7 +207,7 @@ export default function TasksPage() {
               >
                 Previous
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground tabular-nums">
                 Page {(tasks.number ?? 0) + 1} of {tasks.totalPages ?? 1}
               </span>
               <Button
@@ -202,9 +221,22 @@ export default function TasksPage() {
             </div>
           </>
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-lg">No tasks found</p>
-            <p className="text-sm mt-1">Create a new task to get started</p>
+          <div className="text-center py-16">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <ListTodo className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-lg font-medium">No tasks found</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {hasFilters
+                ? "Try adjusting your filters"
+                : "Create a new task to get started"}
+            </p>
+            {!hasFilters && (
+              <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Task
+              </Button>
+            )}
           </div>
         )}
       </div>

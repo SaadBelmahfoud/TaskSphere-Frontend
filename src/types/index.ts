@@ -154,8 +154,6 @@ export interface UserAdminResponse {
   firstName: string;
   lastName: string;
   enabled: boolean;
-  createdAt?: string;
-  lastLogin?: string;
 }
 
 // ===== API Error =====

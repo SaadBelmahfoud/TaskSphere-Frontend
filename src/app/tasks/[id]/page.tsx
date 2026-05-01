@@ -14,33 +14,58 @@ import {
   useChangeTaskStatus,
   useAssignTask,
 } from "@/hooks/useTasks";
+import { useUsers } from "@/hooks/useUsers";
 import type { TaskStatus } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   ArrowLeft,
   Trash2,
   UserPlus,
   UserMinus,
   Loader2,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  Circle,
+  Timer,
+  ChevronsUpDown,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow, format } from "date-fns";
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  TODO: "outline",
-  DOING: "secondary",
-  DONE: "default",
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Circle; color: string }> = {
+  TODO: { label: "To Do", variant: "outline", icon: Circle, color: "text-muted-foreground" },
+  DOING: { label: "In Progress", variant: "secondary", icon: Timer, color: "text-primary" },
+  DONE: { label: "Done", variant: "default", icon: CheckCircle2, color: "text-primary" },
 };
 
-const statusLabel: Record<string, string> = {
-  TODO: "To Do",
-  DOING: "In Progress",
-  DONE: "Done",
+const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
+  LOW: { label: "Low", variant: "outline", color: "bg-teal/10 text-teal" },
+  MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
+  HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
+  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-rose/15 text-rose" },
 };
 
 export default function TaskDetailPage() {
@@ -54,8 +79,9 @@ export default function TaskDetailPage() {
   const deleteTask = useDeleteTask();
   const changeStatus = useChangeTaskStatus();
   const assignTask = useAssignTask();
+  const { data: users } = useUsers();
 
-  const [assigneeId, setAssigneeId] = useState("");
+  const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -85,15 +111,15 @@ export default function TaskDetailPage() {
     changeStatus.mutate({ id: taskId, status });
   };
 
-  const handleAssign = () => {
-    if (!assigneeId.trim()) {
-      toast.error("Please enter an assignee ID");
-      return;
-    }
+  // CORRECTION : Envoyer user.email (pas user.id) comme assigneeId
+  // Le backend TaskEntity.assigneeId stocke un EMAIL (pas un UUID).
+  // La requête searchTasksForUser compare t.assigneeId = :username (email du JWT).
+  // Si on envoie un UUID, la query ne matchera JAMAIS.
+  const handleAssign = (userEmail: string) => {
     assignTask.mutate(
-      { id: taskId, data: { assigneeId: assigneeId.trim() } },
+      { id: taskId, data: { assigneeId: userEmail } },
       {
-        onSuccess: () => setAssigneeId(""),
+        onSuccess: () => setAssigneeOpen(false),
       }
     );
   };
@@ -116,8 +142,11 @@ export default function TaskDetailPage() {
   if (!task) {
     return (
       <AppLayout>
-        <div className="text-center py-12">
-          <p className="text-lg text-muted-foreground">Task not found</p>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <X className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium text-muted-foreground">Task not found</p>
           <Link href="/tasks">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -129,6 +158,13 @@ export default function TaskDetailPage() {
     );
   }
 
+  const statusConf = statusConfig[task.status] || statusConfig.TODO;
+  const priorityConf = priorityConfig[task.priority] || priorityConfig.MEDIUM;
+  const StatusIcon = statusConf.icon;
+  // CORRECTION : Chercher par email (pas UUID) car task.assigneeId est un email
+  const assigneeUser = users?.find((u) => u.email === task.assigneeId);
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -136,23 +172,32 @@ export default function TaskDetailPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/tasks">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{task.title}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant={statusVariant[task.status] || "outline"}>
-                  {statusLabel[task.status] || task.status}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight truncate">{task.title}</h1>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <Badge variant={statusConf.variant} className="gap-1">
+                  <StatusIcon className="h-3 w-3" />
+                  {statusConf.label}
                 </Badge>
-                <Badge variant="outline">{task.priority}</Badge>
+                <Badge variant={priorityConf.variant} className={cn("gap-1", priorityConf.color)}>
+                  {priorityConf.label}
+                </Badge>
+                {isOverdue && (
+                  <Badge variant="destructive" className="gap-1">
+                    <Clock className="h-3 w-3" />
+                    Overdue
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
           <ConfirmDialog
             trigger={
-              <Button variant="destructive" size="sm">
+              <Button variant="destructive" size="sm" className="shrink-0">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </Button>
@@ -168,28 +213,39 @@ export default function TaskDetailPage() {
         <Tabs defaultValue="details" className="w-full">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="comments">
+              Comments
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 mt-4">
             {/* Status change */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Status</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <StatusIcon className={cn("h-4 w-4", statusConf.color)} />
+                  Status
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {(["TODO", "DOING", "DONE"] as TaskStatus[]).map((s) => (
-                    <Button
-                      key={s}
-                      variant={task.status === s ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleStatusChange(s)}
-                      disabled={changeStatus.isPending || task.status === s}
-                    >
-                      {statusLabel[s]}
-                    </Button>
-                  ))}
+                  {(["TODO", "DOING", "DONE"] as TaskStatus[]).map((s) => {
+                    const conf = statusConfig[s];
+                    const Icon = conf.icon;
+                    return (
+                      <Button
+                        key={s}
+                        variant={task.status === s ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleStatusChange(s)}
+                        disabled={changeStatus.isPending || task.status === s}
+                        className="gap-1.5"
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {conf.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -215,87 +271,157 @@ export default function TaskDetailPage() {
                     loading={updateTask.isPending}
                   />
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Description</p>
-                      <p className="mt-1 text-sm whitespace-pre-wrap">
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed bg-muted/50 rounded-lg p-3">
                         {task.description || "No description"}
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Owner ID</p>
-                        <p className="mt-1 text-sm font-mono text-xs">{task.userId}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                        <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Due Date</p>
+                          <p className="text-sm mt-0.5">
+                            {task.dueDate
+                              ? format(new Date(task.dueDate), "MMM d, yyyy")
+                              : "No due date"}
+                          </p>
+                          {task.dueDate && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {formatDistanceToNow(new Date(task.dueDate), { addSuffix: true })}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Due Date</p>
-                        <p className="mt-1 text-sm">
-                          {task.dueDate
-                            ? new Date(task.dueDate).toLocaleDateString()
-                            : "No due date"}
-                        </p>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                        <Clock className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Created</p>
+                          <p className="text-sm mt-0.5">
+                            {task.createdAt
+                              ? format(new Date(task.createdAt), "MMM d, yyyy HH:mm")
+                              : "N/A"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Created</p>
-                        <p className="mt-1 text-sm">
-                          {task.createdAt
-                            ? new Date(task.createdAt).toLocaleString()
-                            : "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                        <p className="mt-1 text-sm">
-                          {task.completedAt
-                            ? new Date(task.completedAt).toLocaleString()
-                            : "Not yet"}
-                        </p>
-                      </div>
+                      {task.completedAt && (
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5">
+                          <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-primary">Completed</p>
+                            <p className="text-sm mt-0.5">
+                              {format(new Date(task.completedAt), "MMM d, yyyy HH:mm")}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Assign section */}
+            {/* Assign section with user dropdown */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Assignee</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Assignee
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {task.assigneeId ? (
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm">{task.assigneeId}</span>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                          {assigneeUser
+                            ? `${assigneeUser.firstName?.[0]?.toUpperCase() || ""}${assigneeUser.lastName?.[0]?.toUpperCase() || ""}`
+                            : task.assigneeId.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">
+                          {assigneeUser
+                            ? `${assigneeUser.firstName} ${assigneeUser.lastName}`
+                            : "Unknown User"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {assigneeUser?.email || task.assigneeId}
+                        </p>
+                      </div>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleUnassign}
                       disabled={assignTask.isPending}
+                      className="text-destructive hover:text-destructive"
                     >
                       <UserMinus className="mr-2 h-4 w-4" />
                       Unassign
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Assignee ID (UUID)"
-                      value={assigneeId}
-                      onChange={(e) => setAssigneeId(e.target.value)}
-                      className="max-w-xs"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleAssign}
-                      disabled={assignTask.isPending}
-                    >
-                      {assignTask.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <UserPlus className="mr-2 h-4 w-4" />
-                      )}
-                      Assign
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={assigneeOpen}
+                          className="flex-1 justify-between font-normal"
+                          disabled={assignTask.isPending}
+                        >
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <UserPlus className="h-4 w-4" />
+                            Select a user to assign...
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[350px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search users by name or email..." />
+                          <CommandList>
+                            <CommandEmpty>No users found.</CommandEmpty>
+                            <CommandGroup>
+                              {users
+                                ?.filter((u) => u.enabled)
+                                .map((user) => (
+                                  <CommandItem
+                                    key={user.id}
+                                    value={`${user.firstName} ${user.lastName} ${user.email} ${user.username}`}
+                                    onSelect={() => handleAssign(user.email)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Avatar className="h-6 w-6 mr-2">
+                                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                                        {user.firstName?.[0]?.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">
+                                        {user.firstName} {user.lastName}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] shrink-0 ml-1">
+                                      {user.role}
+                                    </Badge>
+                                    <Check className="ml-auto h-4 w-4 opacity-0" />
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {assignTask.isPending && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
                   </div>
                 )}
               </CardContent>

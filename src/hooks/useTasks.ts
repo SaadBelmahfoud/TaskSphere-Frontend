@@ -25,10 +25,15 @@ export function useTaskSearch(params: TaskFilters) {
   return useQuery<TaskPageResponse>({
     queryKey: ["tasks", "search", params],
     queryFn: async () => {
-      const res = await api.get("/tasks/search", { params });
+      // CORRECTION : Le backend n'a PAS de /tasks/search !
+      // GET /api/v1/tasks accepte déjà tous les filtres comme query params.
+      // AVANT : api.get("/tasks/search", { params }) → 404
+      // APRÈS : api.get("/tasks", { params }) → fonctionne
+      const res = await api.get("/tasks", { params });
       return res.data;
     },
-    enabled: !!(params.keyword || params.status || params.priority),
+    // Toujours enabled — même sans filtres, /tasks retourne les tâches de l'utilisateur
+    enabled: true,
   });
 }
 
