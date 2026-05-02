@@ -45,28 +45,28 @@ import { cn } from "@/lib/utils";
 // Chart configs — using semantic color tokens
 const statusChartConfig: ChartConfig = {
   TODO: { label: "To Do", color: "var(--muted-foreground)" },
-  DOING: { label: "In Progress", color: "var(--teal)" },
+  DOING: { label: "In Progress", color: "var(--sky)" },
   DONE: { label: "Done", color: "var(--emerald)" },
 };
 
 const priorityChartConfig: ChartConfig = {
-  LOW: { label: "Low", color: "var(--teal)" },
+  LOW: { label: "Low", color: "var(--sky)" },
   MEDIUM: { label: "Medium", color: "var(--amber)" },
   HIGH: { label: "High", color: "var(--orange)" },
-  CRITICAL: { label: "Critical", color: "var(--rose)" },
+  CRITICAL: { label: "Critical", color: "var(--coral)" },
 };
 
 const STATUS_COLORS: Record<string, string> = {
   TODO: "var(--color-muted-foreground)",
-  DOING: "var(--color-teal)",
+  DOING: "var(--color-sky)",
   DONE: "var(--color-emerald)",
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "var(--color-teal)",
+  LOW: "var(--color-sky)",
   MEDIUM: "var(--color-amber)",
   HIGH: "var(--color-orange)",
-  CRITICAL: "var(--color-rose)",
+  CRITICAL: "var(--color-coral)",
 };
 
 const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -79,10 +79,10 @@ const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive"
 };
 
 const actionColors: Record<string, string> = {
-  CREATED: "bg-teal/10 text-teal",
+  CREATED: "bg-sky/10 text-sky",
   UPDATED: "bg-amber/10 text-amber",
   STATUS_CHANGED: "bg-emerald/10 text-emerald",
-  DELETED: "bg-rose/10 text-rose",
+  DELETED: "bg-coral/10 text-coral",
   COMMENTED: "bg-muted text-muted-foreground",
   ASSIGNED: "bg-orange/10 text-orange",
 };
@@ -119,9 +119,9 @@ export default function DashboardPage() {
       title: "Created This Week",
       value: stats?.tasksCreatedThisWeek ?? 0,
       icon: CalendarPlus,
-      color: "text-teal",
-      bg: "bg-teal/10",
-      border: "border-teal/20",
+      color: "text-sky",
+      bg: "bg-sky/10",
+      border: "border-sky/20",
     },
     {
       title: "Completed This Week",
@@ -135,9 +135,9 @@ export default function DashboardPage() {
       title: "Overdue",
       value: stats?.overdueTasks ?? 0,
       icon: AlertTriangle,
-      color: "text-rose",
-      bg: "bg-rose/10",
-      border: "border-rose/20",
+      color: "text-coral",
+      bg: "bg-coral/10",
+      border: "border-coral/20",
     },
   ];
 
@@ -330,8 +330,8 @@ export default function DashboardPage() {
                   >
                     <div className={cn(
                       "mt-0.5 w-2 h-2 rounded-full shrink-0",
-                      activity.action === "CREATED" ? "bg-teal" :
-                      activity.action === "DELETED" ? "bg-rose" :
+                      activity.action === "CREATED" ? "bg-sky" :
+                      activity.action === "DELETED" ? "bg-coral" :
                       activity.action === "STATUS_CHANGED" ? "bg-emerald" :
                       "bg-muted-foreground"
                     )} />

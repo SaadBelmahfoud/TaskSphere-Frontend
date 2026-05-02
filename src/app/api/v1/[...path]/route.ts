@@ -26,6 +26,8 @@ async function proxyRequest(req: NextRequest): Promise<NextResponse> {
   const targetUrl = `${BACKEND_URL}${pathname}${search}`;
 
   // Clone headers from the incoming request, forwarding auth & content-type
+  // FIX: Also forward the Cookie header so HttpOnly cookie-based auth works
+  // through the proxy (the backend needs to see the browser's cookies).
   const headers: Record<string, string> = {};
   req.headers.forEach((value, key) => {
     // Skip hop-by-hop headers that should not be forwarded
@@ -44,6 +46,11 @@ async function proxyRequest(req: NextRequest): Promise<NextResponse> {
     }
     headers[key] = value;
   });
+
+  // Log the Cookie header being forwarded for debugging HttpOnly cookie auth
+  if (headers["cookie"]) {
+    console.log(`[API Proxy] Forwarding Cookie header: ${headers["cookie"].substring(0, 120)}...`);
+  }
 
   // Override host to match the backend
   try {
@@ -69,6 +76,11 @@ async function proxyRequest(req: NextRequest): Promise<NextResponse> {
     });
 
     // Build the response headers, skipping problematic headers
+    // FIX: Use append() instead of set() for ALL response headers.
+    // When the backend sends multiple Set-Cookie headers (e.g. accessToken
+    // + refreshToken), set() OVERWRITES the previous value so only the last
+    // cookie survives. append() preserves every header value, which is
+    // critical for Set-Cookie but harmless for single-value headers.
     const responseHeaders = new Headers();
     backendResponse.headers.forEach((value, key) => {
       const lower = key.toLowerCase();
@@ -81,8 +93,19 @@ async function proxyRequest(req: NextRequest): Promise<NextResponse> {
       ) {
         return;
       }
-      responseHeaders.set(key, value);
+      // Use append() to preserve multiple values for the same header name.
+      // This is especially important for Set-Cookie where the backend may
+      // return accessToken and refreshToken as separate headers.
+      responseHeaders.append(key, value);
     });
+
+    // Log Set-Cookie headers being forwarded for debugging
+    const setCookieHeaders = responseHeaders.getSetCookie?.();
+    if (setCookieHeaders && setCookieHeaders.length > 0) {
+      console.log(`[API Proxy] Forwarding ${setCookieHeaders.length} Set-Cookie header(s):`,
+        setCookieHeaders.map((h: string) => h.substring(0, 80) + (h.length > 80 ? "..." : ""))
+      );
+    }
 
     // Return the backend response with the same status code
     return new NextResponse(backendResponse.body, {

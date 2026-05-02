@@ -31,7 +31,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const COLUMNS: { status: TaskStatus; label: string; color: string; bgColor: string; headerColor: string }[] = [
   { status: "TODO", label: "To Do", color: "border-l-muted-foreground", bgColor: "bg-muted/30", headerColor: "text-muted-foreground" },
-  { status: "DOING", label: "In Progress", color: "border-l-teal", bgColor: "bg-muted/30", headerColor: "text-teal" },
+  { status: "DOING", label: "In Progress", color: "border-l-sky", bgColor: "bg-muted/30", headerColor: "text-sky" },
   { status: "DONE", label: "Done", color: "border-l-emerald", bgColor: "bg-muted/30", headerColor: "text-emerald" },
 ];
 
@@ -43,10 +43,10 @@ const priorityVariant: Record<string, "default" | "secondary" | "destructive" | 
 };
 
 const priorityColorClass: Record<string, string> = {
-  LOW: "bg-teal/10 text-teal",
+  LOW: "bg-sky/10 text-sky",
   MEDIUM: "bg-amber/15 text-amber",
   HIGH: "bg-orange/15 text-orange",
-  CRITICAL: "bg-rose/15 text-rose",
+  CRITICAL: "bg-coral/15 text-coral",
 };
 
 function DroppableColumn({

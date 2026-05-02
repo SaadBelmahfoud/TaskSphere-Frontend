@@ -93,6 +93,8 @@ export interface TaskFilters {
   assigneeId?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  page?: number;
+  size?: number;
 }
 
 // ===== Dashboard =====
@@ -166,13 +168,10 @@ export interface ApiErrorResponse {
 }
 
 export function isApiError(error: unknown): error is { response: { data: ApiErrorResponse; status: number } } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof (error as Record<string, unknown>).response === 'object' &&
-    (error as Record<string, unknown>).response !== null &&
-    'data' in (error as Record<string, unknown>).response &&
-    typeof ((error as Record<string, unknown>).response as Record<string, unknown>).data === 'object'
-  );
+  if (typeof error !== 'object' || error === null) return false;
+  if (!('response' in error)) return false;
+  const resp = (error as Record<string, unknown>).response;
+  if (typeof resp !== 'object' || resp === null) return false;
+  if (!('data' in resp)) return false;
+  return typeof (resp as Record<string, unknown>).data === 'object';
 }

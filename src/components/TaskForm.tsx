@@ -37,16 +37,17 @@ import { cn } from "@/lib/utils";
 
 interface TaskFormProps {
   task?: TaskResponse;
-  onSubmit: (data: CreateTaskFormData | UpdateTaskFormData) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSubmit: (data: any) => void;
   loading?: boolean;
   mode: "create" | "edit";
 }
 
 const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
-  LOW: { label: "Low", color: "bg-teal/10 text-teal" },
+  LOW: { label: "Low", color: "bg-sky/10 text-sky" },
   MEDIUM: { label: "Medium", color: "bg-amber/15 text-amber" },
   HIGH: { label: "High", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", color: "bg-rose/15 text-rose" },
+  CRITICAL: { label: "Critical", color: "bg-coral/15 text-coral" },
 };
 
 export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProps) {
@@ -60,7 +61,8 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
     watch,
     formState: { errors },
   } = useForm<CreateTaskFormData>({
-    resolver: zodResolver(schema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema) as any,
     defaultValues: task
       ? {
           title: task.title,

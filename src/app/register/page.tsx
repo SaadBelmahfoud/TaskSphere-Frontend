@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Sparkles } from "lucide-react";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -59,18 +59,28 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-sky/5 blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-coral/5 blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md space-y-6 relative z-10">
         {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto mb-4 w-14 h-14 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-primary-foreground font-bold text-xl">TS</span>
+          <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-xl shadow-primary/25 -rotate-3 hover:rotate-0 transition-transform duration-300">
+            <span className="text-primary-foreground font-bold text-2xl">TS</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create Account</h1>
-          <p className="text-muted-foreground mt-1">Join TaskSphere to manage your tasks</p>
+          <p className="text-muted-foreground mt-1 flex items-center justify-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-coral" />
+            Join TaskSphere to manage your tasks
+          </p>
         </div>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-xl border-primary/10">
           <CardContent className="pt-6">
             {serverError && (
               <Alert variant="destructive" className="mb-4">
@@ -86,7 +96,7 @@ export default function RegisterPage() {
                   value={form.username}
                   onChange={(e) => updateField("username", e.target.value)}
                   disabled={loading}
-                  className="transition-colors"
+                  className="transition-colors focus-visible:ring-primary/30"
                   autoFocus
                 />
                 {errors.username && (
@@ -102,7 +112,7 @@ export default function RegisterPage() {
                     value={form.firstName}
                     onChange={(e) => updateField("firstName", e.target.value)}
                     disabled={loading}
-                    className="transition-colors"
+                    className="transition-colors focus-visible:ring-primary/30"
                   />
                   {errors.firstName && (
                     <p className="text-sm text-destructive">{errors.firstName}</p>
@@ -116,7 +126,7 @@ export default function RegisterPage() {
                     value={form.lastName}
                     onChange={(e) => updateField("lastName", e.target.value)}
                     disabled={loading}
-                    className="transition-colors"
+                    className="transition-colors focus-visible:ring-primary/30"
                   />
                   {errors.lastName && (
                     <p className="text-sm text-destructive">{errors.lastName}</p>
@@ -132,7 +142,7 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={(e) => updateField("email", e.target.value)}
                   disabled={loading}
-                  className="transition-colors"
+                  className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email}</p>
@@ -147,7 +157,7 @@ export default function RegisterPage() {
                   value={form.password}
                   onChange={(e) => updateField("password", e.target.value)}
                   disabled={loading}
-                  className="transition-colors"
+                  className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password}</p>
@@ -162,13 +172,13 @@ export default function RegisterPage() {
                   value={form.confirmPassword}
                   onChange={(e) => updateField("confirmPassword", e.target.value)}
                   disabled={loading}
-                  className="transition-colors"
+                  className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.confirmPassword && (
                   <p className="text-sm text-destructive">{errors.confirmPassword}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary/85 hover:from-primary/90 hover:to-primary/75 shadow-md shadow-primary/20 transition-all duration-200" disabled={loading}>
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (

@@ -2,9 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // P0-3 FIX: Removed ignoreBuildErrors — TypeScript errors must be
+  // fixed, not silenced. Build should fail on type errors.
   reactStrictMode: false,
   // ═══════════════════════════════════════════════════════════════════
   // API PROXY — All /api/v1/* requests are proxied to the Spring Boot

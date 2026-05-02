@@ -34,12 +34,19 @@ import { cn } from "@/lib/utils";
 // adminOnly: only ADMIN can see
 // managerAndAbove: MANAGER and ADMIN can see
 // (no restriction): all authenticated users can see
-const navLinks = [
+interface NavLink {
+  readonly href: string;
+  readonly label: string;
+  readonly icon: React.ComponentType<{ className?: string }>;
+  readonly adminOnly?: boolean;
+}
+
+const navLinks: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/kanban", label: "Kanban", icon: Columns3 },
   { href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
-] as const;
+];
 
 export default function Navbar() {
   const { auth, logout } = useAuth();
@@ -68,7 +75,7 @@ export default function Navbar() {
       <div className="mx-auto flex h-14 max-w-7xl items-center px-4 gap-4">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg mr-2 shrink-0 group">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center transition-transform group-hover:scale-105">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm shadow-primary/20">
             <span className="text-primary-foreground text-sm font-bold">TS</span>
           </div>
           <span className="hidden sm:inline bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
@@ -135,7 +142,7 @@ export default function Navbar() {
                     <span className={cn(
                       "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
                       auth.role === "ADMIN" ? "bg-primary/10 text-primary" :
-                      auth.role === "MANAGER" ? "bg-amber/15 text-amber" :
+                      auth.role === "MANAGER" ? "bg-sky/15 text-sky" :
                       "bg-muted text-muted-foreground"
                     )}>
                       <User className="mr-1 h-3 w-3" />

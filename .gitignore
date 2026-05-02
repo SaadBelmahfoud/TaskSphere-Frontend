@@ -53,10 +53,6 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
-# Prisma
-prisma/*.db
-prisma/*.db-journal
-
 # Sandbox / Dev
 .claude
 .z-ai-config

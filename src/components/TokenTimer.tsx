@@ -12,7 +12,7 @@ export default function TokenTimer() {
     if (!auth?.tokenExpiry) return;
 
     const interval = setInterval(() => {
-      const remaining = auth.tokenExpiry - Date.now();
+      const remaining = auth.tokenExpiry! - Date.now();
       if (remaining <= 0) {
         setTimeLeft("Expired");
         clearInterval(interval);

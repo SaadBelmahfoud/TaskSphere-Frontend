@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { Loader2, ListTodo, ArrowRight } from "lucide-react";
+import { Loader2, ListTodo, ArrowRight, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -48,18 +48,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-coral/5 blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-sky/5 blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md space-y-6 relative z-10">
         {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto mb-4 w-14 h-14 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-primary-foreground font-bold text-xl">TS</span>
+          <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-xl shadow-primary/25 rotate-3 hover:rotate-0 transition-transform duration-300">
+            <span className="text-primary-foreground font-bold text-2xl">TS</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Welcome to TaskSphere</h1>
-          <p className="text-muted-foreground mt-1">Sign in to manage your tasks</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Welcome to TaskSphere
+          </h1>
+          <p className="text-muted-foreground mt-1 flex items-center justify-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Sign in to manage your tasks
+          </p>
         </div>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-xl border-primary/10">
           <CardContent className="pt-6">
             {serverError && (
               <Alert variant="destructive" className="mb-4">
@@ -76,7 +88,7 @@ export default function LoginPage() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   disabled={loading}
-                  className="transition-colors"
+                  className="transition-colors focus-visible:ring-primary/30"
                   autoFocus
                 />
                 {errors.email && (
@@ -94,13 +106,13 @@ export default function LoginPage() {
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   disabled={loading}
-                  className="transition-colors"
+                  className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary/85 hover:from-primary/90 hover:to-primary/75 shadow-md shadow-primary/20 transition-all duration-200" disabled={loading}>
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
