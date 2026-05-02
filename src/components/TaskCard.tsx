@@ -1,32 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import type { TaskResponse, TaskStatus, TaskPriority } from "@/types";
+import type { TaskResponse } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, UserCircle, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; dotColor: string }> = {
-  TODO: { label: "To Do", variant: "outline", dotColor: "bg-muted-foreground" },
-  DOING: { label: "In Progress", variant: "secondary", dotColor: "bg-primary" },
-  DONE: { label: "Done", variant: "default", dotColor: "bg-primary" },
-};
-
-const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
-  LOW: { label: "Low", variant: "outline", color: "bg-sky/10 text-sky" },
-  MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
-  HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-coral/15 text-coral" },
-};
+import { statusConfig, priorityConfig } from "@/lib/task-config";
 
 interface TaskCardProps {
   task: TaskResponse;
   assigneeName?: string;
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * AVANT : statusConfig + priorityConfig définis localement (12 lignes)
+ * APRÈS : importés depuis @/lib/task-config (1 ligne)
+ *
+ * AVANTAGE : Si on change la couleur d'un statut, il suffit de
+ * modifier task-config.ts. TaskCard, TaskForm, TaskDetail, Kanban
+ * et Dashboard sont automatiquement mis à jour.
+ * ═══════════════════════════════════════════════════════════════════
+ */
 export default function TaskCard({ task, assigneeName }: TaskCardProps) {
   const statusConf = statusConfig[task.status] || statusConfig.TODO;
   const priorityConf = priorityConfig[task.priority] || priorityConfig.MEDIUM;

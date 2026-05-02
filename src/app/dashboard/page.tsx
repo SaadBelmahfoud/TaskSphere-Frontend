@@ -1,3 +1,33 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * DASHBOARD PAGE — Dynamic imports + Shared config
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
+ * PHASE 2 — TÂCHE 4 : Dynamic() imports pour recharts
+ * ──────────────────────────────────────────────────────
+ *
+ * TÂCHE 2 :
+ *   AVANT : statusChartConfig, priorityChartConfig, STATUS_COLORS,
+ *           PRIORITY_COLORS, actionBadgeVariant, actionColors définis localement
+ *   APRÈS : importés depuis @/lib/task-config
+ *
+ * TÂCHE 4 :
+ *   AVANT : import statique de recharts (PieChart, BarChart, etc.)
+ *           → ~200KB gzipped inclus dans le bundle initial
+ *   APRÈS : dynamic() import → recharts n'est chargé QUE quand
+ *           l'utilisateur visite /dashboard
+ *
+ *   PRINCIPE : Code Splitting avec next/dynamic
+ *   recharts est la PLUS GROSSE dépendance du frontend.
+ *   En le chargeant dynamiquement, on réduit significativement
+ *   le bundle initial (First Load JS).
+ *
+ *   APPROCHE : On crée un composant wrapper ChartsSection qui
+ *   importe recharts normalement, puis on utilise dynamic()
+ *   pour charger ce wrapper de manière asynchrone.
+ *   ssr: false car recharts utilise des APIs DOM pour les mesures SVG.
+ */
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
@@ -12,24 +42,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
-import {
   ListTodo,
   CalendarPlus,
   CheckCircle2,
@@ -41,51 +53,55 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+import {
+  statusChartConfig,
+  priorityChartConfig,
+  STATUS_COLORS,
+  PRIORITY_COLORS,
+  actionColors,
+} from "@/lib/task-config";
 
-// Chart configs — using semantic color tokens
-const statusChartConfig: ChartConfig = {
-  TODO: { label: "To Do", color: "var(--muted-foreground)" },
-  DOING: { label: "In Progress", color: "var(--sky)" },
-  DONE: { label: "Done", color: "var(--emerald)" },
-};
-
-const priorityChartConfig: ChartConfig = {
-  LOW: { label: "Low", color: "var(--sky)" },
-  MEDIUM: { label: "Medium", color: "var(--amber)" },
-  HIGH: { label: "High", color: "var(--orange)" },
-  CRITICAL: { label: "Critical", color: "var(--coral)" },
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  TODO: "var(--color-muted-foreground)",
-  DOING: "var(--color-sky)",
-  DONE: "var(--color-emerald)",
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "var(--color-sky)",
-  MEDIUM: "var(--color-amber)",
-  HIGH: "var(--color-orange)",
-  CRITICAL: "var(--color-coral)",
-};
-
-const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  CREATED: "default",
-  UPDATED: "secondary",
-  STATUS_CHANGED: "outline",
-  DELETED: "destructive",
-  COMMENTED: "secondary",
-  ASSIGNED: "outline",
-};
-
-const actionColors: Record<string, string> = {
-  CREATED: "bg-sky/10 text-sky",
-  UPDATED: "bg-amber/10 text-amber",
-  STATUS_CHANGED: "bg-emerald/10 text-emerald",
-  DELETED: "bg-coral/10 text-coral",
-  COMMENTED: "bg-muted text-muted-foreground",
-  ASSIGNED: "bg-orange/10 text-orange",
-};
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PHASE 2 — TÂCHE 4 : Dynamic import de la section Charts
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * Le composant ChartsSection contient TOUS les imports recharts.
+ * En le chargeant dynamiquement, on split le bundle :
+ * - Le JS principal ne contient PAS recharts (~200KB économisés)
+ * - Un chunk séparé "charts-section" est chargé en parallèle
+ * - L'utilisateur voit les stat cards immédiatement, les charts
+ *   apparaissent avec un léger délai (skeleton)
+ */
+const ChartsSection = dynamic(
+  () => import("@/components/DashboardCharts"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tasks by Status</CardTitle>
+            <CardDescription>Loading chart...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tasks by Priority</CardTitle>
+            <CardDescription>Loading chart...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    ),
+  }
+);
 
 export default function DashboardPage() {
   const { auth } = useAuth();
@@ -140,22 +156,6 @@ export default function DashboardPage() {
       border: "border-coral/20",
     },
   ];
-
-  const statusData = stats?.tasksByStatus
-    ? Object.entries(stats.tasksByStatus).map(([status, count]) => ({
-        status,
-        count,
-        fill: STATUS_COLORS[status] || "var(--chart-1)",
-      }))
-    : [];
-
-  const priorityData = stats?.tasksByPriority
-    ? Object.entries(stats.tasksByPriority).map(([priority, count]) => ({
-        priority,
-        count,
-        fill: PRIORITY_COLORS[priority] || "var(--chart-1)",
-      }))
-    : [];
 
   const isLastActivityPage = activities
     ? activities.number >= activities.totalPages - 1
@@ -232,78 +232,15 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* PieChart - Tasks by Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Tasks by Status</CardTitle>
-              <CardDescription>Distribution across statuses</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <Skeleton className="h-[300px] w-full" />
-              ) : statusData.length > 0 ? (
-                <ChartContainer config={statusChartConfig} className="h-[300px] w-full">
-                  <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Pie
-                      data={statusData}
-                      dataKey="count"
-                      nameKey="status"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      innerRadius={50}
-                      paddingAngle={2}
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartLegend content={<ChartLegendContent nameKey="status" />} />
-                  </PieChart>
-                </ChartContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                  No task data available
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* BarChart - Tasks by Priority */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Tasks by Priority</CardTitle>
-              <CardDescription>Distribution across priorities</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {statsLoading ? (
-                <Skeleton className="h-[300px] w-full" />
-              ) : priorityData.length > 0 ? (
-                <ChartContainer config={priorityChartConfig} className="h-[300px] w-full">
-                  <BarChart data={priorityData} accessibilityLayer>
-                    <CartesianGrid vertical={false} />
-                    <XAxis dataKey="priority" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent nameKey="priority" />} />
-                    <Bar dataKey="count" radius={4}>
-                      {priorityData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                  No task data available
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Charts — loaded dynamically (Tâche 4) */}
+        <ChartsSection
+          stats={stats}
+          statsLoading={statsLoading}
+          statusChartConfig={statusChartConfig}
+          priorityChartConfig={priorityChartConfig}
+          STATUS_COLORS={STATUS_COLORS}
+          PRIORITY_COLORS={PRIORITY_COLORS}
+        />
 
         {/* Recent Activities */}
         <Card>

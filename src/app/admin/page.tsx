@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import AppLayout from "@/components/AppLayout";
@@ -22,13 +22,17 @@ import {
 } from "@/components/ui/select";
 import { Shield, UserCog, Search, Users, UserCheck, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { roleConfig } from "@/lib/task-config";
 
-const roleConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
-  ADMIN: { variant: "default", color: "bg-primary/10 text-primary" },
-  MANAGER: { variant: "secondary", color: "bg-sky/10 text-sky" },
-  USER: { variant: "outline", color: "bg-muted text-muted-foreground" },
-};
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * AVANT : roleConfig défini localement (4 lignes)
+ * APRÈS : importé depuis @/lib/task-config
+ * ═══════════════════════════════════════════════════════════════════
+ */
 
 export default function AdminPage() {
   const { auth } = useAuth();

@@ -54,19 +54,17 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
+import { statusConfig, priorityConfig } from "@/lib/task-config";
 
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Circle; color: string }> = {
-  TODO: { label: "To Do", variant: "outline", icon: Circle, color: "text-muted-foreground" },
-  DOING: { label: "In Progress", variant: "secondary", icon: Timer, color: "text-primary" },
-  DONE: { label: "Done", variant: "default", icon: CheckCircle2, color: "text-primary" },
-};
-
-const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
-  LOW: { label: "Low", variant: "outline", color: "bg-sky/10 text-sky" },
-  MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
-  HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-coral/15 text-coral" },
-};
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * AVANT : statusConfig + priorityConfig définis localement (12 lignes)
+ * APRÈS : importés depuis @/lib/task-config
+ * ═══════════════════════════════════════════════════════════════════
+ */
 
 export default function TaskDetailPage() {
   const { auth } = useAuth();
@@ -112,9 +110,6 @@ export default function TaskDetailPage() {
   };
 
   // CORRECTION : Envoyer user.email (pas user.id) comme assigneeId
-  // Le backend TaskEntity.assigneeId stocke un EMAIL (pas un UUID).
-  // La requête searchTasksForUser compare t.assigneeId = :username (email du JWT).
-  // Si on envoie un UUID, la query ne matchera JAMAIS.
   const handleAssign = (userEmail: string) => {
     assignTask.mutate(
       { id: taskId, data: { assigneeId: userEmail } },

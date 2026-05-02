@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createTaskSchema, updateTaskSchema, type CreateTaskFormData, type UpdateTaskFormData } from "@/lib/schemas";
+import { createTaskSchema, updateTaskSchema, type CreateTaskFormData } from "@/lib/schemas";
 import type { TaskResponse, TaskPriority } from "@/types";
 import { useUsers } from "@/hooks/useUsers";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,17 @@ import {
 } from "@/components/ui/command";
 import { Loader2, ChevronsUpDown, Check, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { priorityConfig } from "@/lib/task-config";
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * AVANT : priorityConfig défini localement (6 lignes)
+ * APRÈS : importé depuis @/lib/task-config (1 ligne)
+ * ═══════════════════════════════════════════════════════════════════
+ */
 
 interface TaskFormProps {
   task?: TaskResponse;
@@ -42,13 +53,6 @@ interface TaskFormProps {
   loading?: boolean;
   mode: "create" | "edit";
 }
-
-const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
-  LOW: { label: "Low", color: "bg-sky/10 text-sky" },
-  MEDIUM: { label: "Medium", color: "bg-amber/15 text-amber" },
-  HIGH: { label: "High", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", color: "bg-coral/15 text-coral" },
-};
 
 export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProps) {
   const schema = mode === "create" ? createTaskSchema : updateTaskSchema;
@@ -139,7 +143,7 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
             <SelectContent>
-              {(Object.entries(priorityConfig) as [TaskPriority, typeof priorityConfig[TaskPriority]][]).map(
+              {(Object.entries(priorityConfig) as [string, typeof priorityConfig[string]][]).map(
                 ([value, config]) => (
                   <SelectItem key={value} value={value}>
                     <div className="flex items-center gap-2">
@@ -220,9 +224,6 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
                             onSelect={() => {
                               // CORRECTION : Envoyer user.email (pas user.id)
                               // Le backend TaskEntity.assigneeId stocke un EMAIL
-                              // (pas un UUID). La requête searchTasksForUser compare
-                              // t.assigneeId = :username (email du JWT).
-                              // Si on envoie un UUID, la query ne matchera JAMAIS.
                               setValue("assigneeId", user.email);
                               setAssigneeOpen(false);
                             }}

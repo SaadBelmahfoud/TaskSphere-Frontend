@@ -1,9 +1,30 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * REGISTER PAGE — React Hook Form + Zod Validation
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * PHASE 2 — TÂCHE 3 : Refactor avec React Hook Form
+ * ──────────────────────────────────────────────────────
+ *
+ * AVANT : useState + safeParse manuel (6 champs × onChange)
+ * APRÈS : react-hook-form + zodResolver (register auto)
+ *
+ * AVANTAGES IDENTIQUES AU LOGIN (voir page.tsx) :
+ *   - Moins de code, validation au blur, gestion auto des erreurs
+ *   - Consistance avec TaskForm.tsx
+ *
+ * NOTE SUR LE SCHEMA ZOD :
+ *   registerSchema contient déjà le refine() pour vérifier
+ *   password === confirmPassword. react-hook-form + zodResolver
+ *   gère automatiquement cette validation croisée.
+ */
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { registerSchema } from "@/lib/schemas";
+import { registerSchema, type RegisterFormData } from "@/lib/schemas";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,51 +32,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { useState } from "react";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register: registerUser } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({
-    username: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      username: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onSubmit = async (data: RegisterFormData) => {
     setServerError("");
-    setErrors({});
-
-    const result = registerSchema.safeParse(form);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        fieldErrors[issue.path[0] as string] = issue.message;
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setLoading(true);
     try {
-      await register(form);
+      await registerUser(data);
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setServerError(error.response?.data?.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const updateField = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -87,20 +95,19 @@ export default function RegisterPage() {
                 <AlertDescription>{serverError}</AlertDescription>
               </Alert>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   placeholder="johndoe"
-                  value={form.username}
-                  onChange={(e) => updateField("username", e.target.value)}
-                  disabled={loading}
+                  {...register("username")}
+                  disabled={isSubmitting}
                   className="transition-colors focus-visible:ring-primary/30"
                   autoFocus
                 />
                 {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username}</p>
+                  <p className="text-sm text-destructive">{errors.username.message}</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -109,13 +116,12 @@ export default function RegisterPage() {
                   <Input
                     id="firstName"
                     placeholder="John"
-                    value={form.firstName}
-                    onChange={(e) => updateField("firstName", e.target.value)}
-                    disabled={loading}
+                    {...register("firstName")}
+                    disabled={isSubmitting}
                     className="transition-colors focus-visible:ring-primary/30"
                   />
                   {errors.firstName && (
-                    <p className="text-sm text-destructive">{errors.firstName}</p>
+                    <p className="text-sm text-destructive">{errors.firstName.message}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -123,13 +129,12 @@ export default function RegisterPage() {
                   <Input
                     id="lastName"
                     placeholder="Doe"
-                    value={form.lastName}
-                    onChange={(e) => updateField("lastName", e.target.value)}
-                    disabled={loading}
+                    {...register("lastName")}
+                    disabled={isSubmitting}
                     className="transition-colors focus-visible:ring-primary/30"
                   />
                   {errors.lastName && (
-                    <p className="text-sm text-destructive">{errors.lastName}</p>
+                    <p className="text-sm text-destructive">{errors.lastName.message}</p>
                   )}
                 </div>
               </div>
@@ -139,13 +144,12 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   placeholder="you@example.com"
-                  value={form.email}
-                  onChange={(e) => updateField("email", e.target.value)}
-                  disabled={loading}
+                  {...register("email")}
+                  disabled={isSubmitting}
                   className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                  <p className="text-sm text-destructive">{errors.email.message}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -154,13 +158,12 @@ export default function RegisterPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  value={form.password}
-                  onChange={(e) => updateField("password", e.target.value)}
-                  disabled={loading}
+                  {...register("password")}
+                  disabled={isSubmitting}
                   className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
+                  <p className="text-sm text-destructive">{errors.password.message}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -169,17 +172,16 @@ export default function RegisterPage() {
                   id="confirmPassword"
                   type="password"
                   placeholder="••••••••"
-                  value={form.confirmPassword}
-                  onChange={(e) => updateField("confirmPassword", e.target.value)}
-                  disabled={loading}
+                  {...register("confirmPassword")}
+                  disabled={isSubmitting}
                   className="transition-colors focus-visible:ring-primary/30"
                 />
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary/85 hover:from-primary/90 hover:to-primary/75 shadow-md shadow-primary/20 transition-all duration-200" disabled={loading}>
-                {loading ? (
+              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary/85 hover:from-primary/90 hover:to-primary/75 shadow-md shadow-primary/20 transition-all duration-200" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <ArrowRight className="mr-2 h-4 w-4" />
