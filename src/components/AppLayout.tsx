@@ -40,7 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <footer className="border-t bg-card mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+            <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
               <span className="text-primary-foreground text-[8px] font-bold">TS</span>
             </div>
             TaskSphere &copy; {new Date().getFullYear()}

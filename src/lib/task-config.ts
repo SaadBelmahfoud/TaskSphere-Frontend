@@ -3,39 +3,8 @@
  * SHARED MODULE : Task Configuration (DRY Principle)
  * ═══════════════════════════════════════════════════════════════════
  *
- * PHASE 2 — TÂCHE 2 : Extraction des statusConfig / priorityConfig
- * ─────────────────────────────────────────────────────────────────
- *
- * PROBLÈME AVANT :
- *   Les configurations de statut et de priorité étaient dupliquées
- *   dans CHAQUE composant qui en avait besoin :
- *   - TaskCard.tsx       → statusConfig + priorityConfig (locales)
- *   - TaskForm.tsx       → priorityConfig (locale)
- *   - tasks/[id]/page.tsx → statusConfig + priorityConfig (locales)
- *   - kanban/page.tsx    → COLUMNS + priorityVariant + priorityColorClass (locales)
- *   - dashboard/page.tsx → statusChartConfig + priorityChartConfig + STATUS_COLORS + PRIORITY_COLORS (locales)
- *
- *   PRINCIPE VIOLÉ : DRY (Don't Repeat Yourself)
- *   Si on change la couleur d'un statut ou d'une priorité,
- *   il faut le modifier dans 5 fichiers → risque d'incohérence.
- *
- * SOLUTION APRÈS :
- *   Ce module centralise TOUTES les configurations liées aux tâches.
- *   Chaque composant importe depuis ce module unique.
- *   → Un seul endroit à modifier = zéro risque d'incohérence.
- *
- * STRUCTURE :
- * ┌────────────────────────────────────────────────────────────────┐
- * │  statusConfig    → Labels, variants, couleurs des statuts     │
- * │  priorityConfig  → Labels, variants, couleurs des priorités   │
- * │  statusChartConfig   → Config recharts pour PieChart statuts  │
- * │  priorityChartConfig → Config recharts pour BarChart priorités│
- * │  STATUS_COLORS   → Couleurs CSS pour les Cell recharts        │
- * │  PRIORITY_COLORS → Couleurs CSS pour les Cell recharts        │
- * │  KANBAN_COLUMNS  → Config colonnes Kanban Board               │
- * │  roleConfig      → Config badges rôles (admin panel)          │
- * │  actionColors    → Config badges activités (dashboard)         │
- * └────────────────────────────────────────────────────────────────┘
+ * PHASE 2 — Extraction des statusConfig / priorityConfig
+ * PHASE 3 — Ajout de tagConfig, notificationConfig
  */
 
 import type { ChartConfig } from "@/components/ui/chart";
@@ -50,21 +19,6 @@ import {
 // STATUS CONFIGURATION
 // ═══════════════════════════════════════════════════════
 
-/**
- * Configuration des statuts de tâches.
- *
- * UTILISÉ PAR : TaskCard, tasks/[id]/page, kanban/page
- *
- * PROPERTIES :
- * - label     → Texte affiché dans les badges/boutons
- * - variant   → Variante shadcn/ui Badge pour le style
- * - icon      → Icône Lucide représentant le statut
- * - color     → Classe Tailwind pour la couleur du texte
- * - dotColor  → Classe Tailwind pour le point coloré (TaskCard)
- * - headerColor → Classe Tailwind pour l'en-tête Kanban
- * - borderClass → Classe Tailwind pour la bordure gauche Kanban
- * - bgClass     → Classe Tailwind pour le fond Kanban
- */
 export const statusConfig: Record<string, {
   label: string;
   variant: "default" | "secondary" | "destructive" | "outline";
@@ -111,16 +65,6 @@ export const statusConfig: Record<string, {
 // PRIORITY CONFIGURATION
 // ═══════════════════════════════════════════════════════
 
-/**
- * Configuration des priorités de tâches.
- *
- * UTILISÉ PAR : TaskCard, TaskForm, tasks/[id]/page, kanban/page
- *
- * PROPERTIES :
- * - label     → Texte affiché dans les badges/boutons
- * - variant   → Variante shadcn/ui Badge
- * - color     → Classe Tailwind pour le fond + texte du badge
- */
 export const priorityConfig: Record<string, {
   label: string;
   variant: "default" | "secondary" | "destructive" | "outline";
@@ -133,33 +77,49 @@ export const priorityConfig: Record<string, {
 };
 
 // ═══════════════════════════════════════════════════════
+// TAG CONFIGURATION (Phase 3)
+// ═══════════════════════════════════════════════════════
+
+export const DEFAULT_TAG_COLORS = [
+  "#EF4444", "#F59E0B", "#10B981", "#3B82F6",
+  "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1",
+  "#F97316", "#06B6D4", "#84CC16", "#E11D48",
+];
+
+// ═══════════════════════════════════════════════════════
+// NOTIFICATION CONFIGURATION (Phase 3)
+// ═══════════════════════════════════════════════════════
+
+export const notificationTypeConfig: Record<string, {
+  label: string;
+  icon: string;
+  color: string;
+}> = {
+  TASK_ASSIGNED: { label: "Task Assigned", icon: "UserPlus", color: "text-sky" },
+  TASK_UNASSIGNED: { label: "Task Unassigned", icon: "UserMinus", color: "text-orange" },
+  TASK_UPDATED: { label: "Task Updated", icon: "Pencil", color: "text-amber" },
+  TASK_STATUS_CHANGED: { label: "Status Changed", icon: "ArrowRightLeft", color: "text-emerald" },
+  TASK_DELETED: { label: "Task Deleted", icon: "Trash2", color: "text-coral" },
+  COMMENT_ADDED: { label: "Comment Added", icon: "MessageSquare", color: "text-muted-foreground" },
+  USER_ROLE_CHANGED: { label: "Role Changed", icon: "Shield", color: "text-primary" },
+};
+
+// ═══════════════════════════════════════════════════════
 // CHART CONFIGURATIONS (Recharts)
 // ═══════════════════════════════════════════════════════
 
-/**
- * Configuration du PieChart "Tasks by Status".
- * UTILISÉ PAR : dashboard/page.tsx
- */
 export const statusChartConfig: ChartConfig = {
   TODO: { label: "To Do", color: "var(--muted-foreground)" },
   DOING: { label: "In Progress", color: "var(--sky)" },
   DONE: { label: "Done", color: "var(--emerald)" },
 };
 
-/**
- * Configuration du BarChart "Tasks by Priority".
- * UTILISÉ PAR : dashboard/page.tsx
- */
 export const priorityChartConfig: ChartConfig = {
   LOW: { label: "Low", color: "var(--sky)" },
   MEDIUM: { label: "Medium", color: "var(--amber)" },
   HIGH: { label: "High", color: "var(--orange)" },
   CRITICAL: { label: "Critical", color: "var(--coral)" },
 };
-
-// ═══════════════════════════════════════════════════════
-// CHART COLORS (CSS Variables for Recharts Cells)
-// ═══════════════════════════════════════════════════════
 
 export const STATUS_COLORS: Record<string, string> = {
   TODO: "var(--color-muted-foreground)",
@@ -178,10 +138,6 @@ export const PRIORITY_COLORS: Record<string, string> = {
 // KANBAN COLUMNS
 // ═══════════════════════════════════════════════════════
 
-/**
- * Configuration des colonnes du Kanban Board.
- * UTILISÉ PAR : kanban/page.tsx
- */
 export const KANBAN_COLUMNS: {
   status: TaskStatus;
   label: string;
@@ -198,10 +154,6 @@ export const KANBAN_COLUMNS: {
 // ROLE CONFIGURATION (Admin Panel)
 // ═══════════════════════════════════════════════════════
 
-/**
- * Configuration des badges de rôle utilisateur.
- * UTILISÉ PAR : admin/page.tsx
- */
 export const roleConfig: Record<string, {
   variant: "default" | "secondary" | "destructive" | "outline";
   color: string;
@@ -215,10 +167,6 @@ export const roleConfig: Record<string, {
 // ACTION COLORS (Activity Log)
 // ═══════════════════════════════════════════════════════
 
-/**
- * Configuration des badges d'action pour l'Activity Log.
- * UTILISÉ PAR : dashboard/page.tsx
- */
 export const actionBadgeVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   CREATED: "default",
   UPDATED: "secondary",
@@ -235,4 +183,5 @@ export const actionColors: Record<string, string> = {
   DELETED: "bg-coral/10 text-coral",
   COMMENTED: "bg-muted text-muted-foreground",
   ASSIGNED: "bg-orange/10 text-orange",
+  UNASSIGNED: "bg-orange/10 text-orange",
 };

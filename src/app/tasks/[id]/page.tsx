@@ -7,6 +7,8 @@ import AppLayout from "@/components/AppLayout";
 import TaskForm from "@/components/TaskForm";
 import CommentsSection from "@/components/CommentsSection";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import AuditTrailView from "@/components/AuditTrailView";
+import AttachmentUpload from "@/components/AttachmentUpload";
 import {
   useTask,
   useUpdateTask,
@@ -54,17 +56,19 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
-import { statusConfig, priorityConfig } from "@/lib/task-config";
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
- * ═══════════════════════════════════════════════════════════════════
- *
- * AVANT : statusConfig + priorityConfig définis localement (12 lignes)
- * APRÈS : importés depuis @/lib/task-config
- * ═══════════════════════════════════════════════════════════════════
- */
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Circle; color: string }> = {
+  TODO: { label: "To Do", variant: "outline", icon: Circle, color: "text-muted-foreground" },
+  DOING: { label: "In Progress", variant: "secondary", icon: Timer, color: "text-primary" },
+  DONE: { label: "Done", variant: "default", icon: CheckCircle2, color: "text-primary" },
+};
+
+const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
+  LOW: { label: "Low", variant: "outline", color: "bg-teal/10 text-teal" },
+  MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
+  HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
+  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-rose/15 text-rose" },
+};
 
 export default function TaskDetailPage() {
   const { auth } = useAuth();
@@ -110,6 +114,9 @@ export default function TaskDetailPage() {
   };
 
   // CORRECTION : Envoyer user.email (pas user.id) comme assigneeId
+  // Le backend TaskEntity.assigneeId stocke un EMAIL (pas un UUID).
+  // La requête searchTasksForUser compare t.assigneeId = :username (email du JWT).
+  // Si on envoie un UUID, la query ne matchera JAMAIS.
   const handleAssign = (userEmail: string) => {
     assignTask.mutate(
       { id: taskId, data: { assigneeId: userEmail } },
@@ -208,9 +215,9 @@ export default function TaskDetailPage() {
         <Tabs defaultValue="details" className="w-full">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="comments">
-              Comments
-            </TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="attachments">Files</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 mt-4">
@@ -425,6 +432,14 @@ export default function TaskDetailPage() {
 
           <TabsContent value="comments" className="mt-4">
             <CommentsSection taskId={taskId} />
+          </TabsContent>
+
+          <TabsContent value="activity" className="mt-4">
+            <AuditTrailView taskId={taskId} />
+          </TabsContent>
+
+          <TabsContent value="attachments" className="mt-4">
+            <AttachmentUpload taskId={taskId} />
           </TabsContent>
         </Tabs>
       </div>

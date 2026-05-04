@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import AppLayout from "@/components/AppLayout";
@@ -22,17 +22,13 @@ import {
 } from "@/components/ui/select";
 import { Shield, UserCog, Search, Users, UserCheck, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { roleConfig } from "@/lib/task-config";
+import { useState } from "react";
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
- * ═══════════════════════════════════════════════════════════════════
- *
- * AVANT : roleConfig défini localement (4 lignes)
- * APRÈS : importé depuis @/lib/task-config
- * ═══════════════════════════════════════════════════════════════════
- */
+const roleConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
+  ADMIN: { variant: "default", color: "bg-primary/10 text-primary" },
+  MANAGER: { variant: "secondary", color: "bg-amber/10 text-amber" },
+  USER: { variant: "outline", color: "bg-muted text-muted-foreground" },
+};
 
 export default function AdminPage() {
   const { auth } = useAuth();
@@ -93,10 +89,10 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-sky/20">
+          <Card className="border-teal/20">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-sky/10">
-                <UserCheck className="h-5 w-5 text-sky" />
+              <div className="p-2 rounded-lg bg-teal/10">
+                <UserCheck className="h-5 w-5 text-teal" />
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums">{activeUsers}</p>
@@ -183,7 +179,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between">
                       <span className={cn(
                         "text-xs font-medium",
-                        user.enabled ? "text-sky" : "text-destructive"
+                        user.enabled ? "text-teal" : "text-destructive"
                       )}>
                         {user.enabled ? "● Enabled" : "● Disabled"}
                       </span>

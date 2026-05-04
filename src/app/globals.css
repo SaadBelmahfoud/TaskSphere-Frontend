@@ -5,45 +5,40 @@
 
 /**
  * ═══════════════════════════════════════════════════════════
- * TASKSPHERE — Violet Bloom Professional Color Palette v4
+ * TASKSPHERE — Professional Color Palette v2
  * ═══════════════════════════════════════════════════════════
  *
  * DESIGN PHILOSOPHY:
  * ──────────────────
- * Vibrant, joyful, and distinctly professional. The primary violet
- * conveys creativity and innovation, while warm coral accents add
- * energy and optimism. True neutral grays provide a clean canvas.
- *
- * KEY SHIFT FROM v3 (Emerald & Gold):
- * • Primary: Emerald 155 → Violet 290 — creative, joyful, innovative
- * • Accent:  Gold 85 → Coral 20 — warm, energetic, optimistic
- * • Chroma:  ~0.17  → ~0.18-0.20 — vibrant, joyful saturation
- * • Overall: Green monotone → Rich violet + warm coral complementary
+ * Professional, muted, enterprise-grade palette inspired by
+ * Linear, Notion, and GitHub. The primary color is a sophisticated
+ * dark teal (hue ~168) — distinctly NOT blue, NOT bright green —
+ * a balanced, trustworthy tone.
  *
  * COLOR DECISIONS:
- * ┌─────────────┬──────────────────────────────────────────────┐
- * │ Primary     │ Rich violet — creativity, innovation, joy    │
- * │ Secondary   │ Soft lavender tint — elegant, supportive     │
- * │ Accent      │ Warm coral — energy, optimism, attention     │
- * │ Destructive │ Deep crimson — clear danger signal           │
- * │ Charts      │ Violet-Coral-Sky-Emerald-Amber palette       │
- * └─────────────┴──────────────────────────────────────────────┘
+ * ┌─────────────┬──────────────────────────────────────────┐
+ * │ Primary     │ Dark teal — professional, trustworthy    │
+ * │ Secondary   │ Warm slate — neutral, supportive         │
+ * │ Accent      │ Muted amber — attention without alarm    │
+ * │ Destructive │ Muted rose — clear but not aggressive    │
+ * │ Charts      │ Cohesive teal-amber-rose-slate palette   │
+ * └─────────────┴──────────────────────────────────────────┘
  *
  * SEMANTIC STATUS COLORS:
- * ┌──────────────┬──────────────────────────────────────────┐
- * │ TODO         │ Slate — pending, neutral                  │
- * │ DOING        │ Sky blue (hue 230) — active, in progress │
- * │ DONE         │ Emerald (hue 155) — completed, success   │
- * │ OVERDUE      │ Coral (hue 20) — urgent, attention       │
- * └──────────────┴──────────────────────────────────────────┘
+ * ┌──────────────┬─────────────────────────────────────┐
+ * │ TODO         │ Slate — neutral, pending             │
+ * │ DOING        │ Teal — active, in progress           │
+ * │ DONE         │ Emerald — completed, success         │
+ * │ OVERDUE      │ Rose — urgent, attention needed      │
+ * └──────────────┴─────────────────────────────────────┘
  *
  * SEMANTIC PRIORITY COLORS:
- * ┌──────────────┬──────────────────────────────────────────┐
- * │ LOW          │ Sky blue (hue 230) — calm, low urgency   │
- * │ MEDIUM       │ Amber (hue 80) — moderate attention      │
- * │ HIGH         │ Orange (hue 55) — important, elevated    │
- * │ CRITICAL     │ Coral (hue 20) — urgent, immediate       │
- * └──────────────┴──────────────────────────────────────────┘
+ * ┌──────────────┬─────────────────────────────────────┐
+ * │ LOW          │ Teal — calm, low urgency             │
+ * │ MEDIUM       │ Amber — moderate attention           │
+ * │ HIGH         │ Orange — important, elevated         │
+ * │ CRITICAL     │ Rose — urgent, immediate action      │
+ * └──────────────┴─────────────────────────────────────┘
  *
  * OKLCH COLOR SPACE:
  * ──────────────────
@@ -92,14 +87,14 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   /* ── Custom Semantic Tokens ── */
-  --color-sky: var(--sky);
-  --color-sky-foreground: var(--sky-foreground);
+  --color-teal: var(--teal);
+  --color-teal-foreground: var(--teal-foreground);
   --color-amber: var(--amber);
   --color-amber-foreground: var(--amber-foreground);
   --color-emerald: var(--emerald);
   --color-emerald-foreground: var(--emerald-foreground);
-  --color-coral: var(--coral);
-  --color-coral-foreground: var(--coral-foreground);
+  --color-rose: var(--rose);
+  --color-rose-foreground: var(--rose-foreground);
   --color-orange: var(--orange);
   --color-orange-foreground: var(--orange-foreground);
 }
@@ -107,175 +102,137 @@
 :root {
   --radius: 0.625rem;
 
-  /* ── Background & Foreground ──
-     Warm white with very subtle violet undertone.
-     Creates a cohesive feel with the violet primary. */
-  --background: oklch(0.985 0.003 290);
-  --foreground: oklch(0.145 0.015 290);
+  /* ── Background & Foreground ── */
+  --background: oklch(0.985 0.002 168);
+  --foreground: oklch(0.16 0.02 168);
 
-  /* ── Card ──
-     Pure white cards on warm-white background create subtle depth. */
-  --card: oklch(0.995 0.001 290);
-  --card-foreground: oklch(0.145 0.015 290);
+  /* ── Card ── */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.16 0.02 168);
 
   /* ── Popover ── */
-  --popover: oklch(0.995 0.001 290);
-  --popover-foreground: oklch(0.145 0.015 290);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.16 0.02 168);
 
-  /* ── Primary: Rich Violet ──
-     Hue 290 — creative, joyful, innovative. Distinctly purple.
-     Chroma 0.20 — vibrant and saturated, professional strength.
-     Deep enough for excellent white text contrast. */
-  --primary: oklch(0.48 0.20 290);
-  --primary-foreground: oklch(0.985 0 0);
+  /* ── Primary: Deep professional teal ── */
+  --primary: oklch(0.42 0.11 168);
+  --primary-foreground: oklch(0.985 0.005 168);
 
-  /* ── Secondary: Soft Lavender ──
-     Subtle violet tint — elegant and cohesive. */
-  --secondary: oklch(0.955 0.015 290);
-  --secondary-foreground: oklch(0.28 0.04 290);
+  /* ── Secondary: Warm slate ── */
+  --secondary: oklch(0.955 0.01 168);
+  --secondary-foreground: oklch(0.28 0.02 168);
 
-  /* ── Muted ──
-     Subtle violet-tinted grays for a cohesive feel. */
-  --muted: oklch(0.955 0.01 290);
-  --muted-foreground: oklch(0.45 0.02 290);
+  /* ── Muted ── */
+  --muted: oklch(0.955 0.008 168);
+  --muted-foreground: oklch(0.50 0.02 168);
 
-  /* ── Accent: Warm Coral ──
-     Hue 20 — warm coral, complementary to violet.
-     Creates an energetic, optimistic accent. */
-  --accent: oklch(0.95 0.025 20);
-  --accent-foreground: oklch(0.30 0.06 20);
+  /* ── Accent: Warm amber ── */
+  --accent: oklch(0.955 0.02 75);
+  --accent-foreground: oklch(0.28 0.04 75);
 
-  /* ── Destructive: Deep Crimson ──
-     Hue 25 — warm red with depth. Clear danger signal. */
-  --destructive: oklch(0.55 0.22 25);
+  /* ── Destructive: Muted rose ── */
+  --destructive: oklch(0.55 0.20 25);
 
-  /* ── Border & Input ──
-     Subtle violet-tinted borders. */
-  --border: oklch(0.90 0.01 290);
-  --input: oklch(0.90 0.01 290);
-  --ring: oklch(0.48 0.20 290);
+  /* ── Border & Input ── */
+  --border: oklch(0.90 0.01 168);
+  --input: oklch(0.90 0.01 168);
+  --ring: oklch(0.42 0.11 168);
 
-  /* ── Chart Colors: Vibrant Joyful Palette ──
-     Five distinct hues for maximum differentiation. */
-  --chart-1: oklch(0.48 0.20 290);   /* Violet — primary identity */
-  --chart-2: oklch(0.65 0.20 20);    /* Coral — warm complement */
-  --chart-3: oklch(0.55 0.15 230);   /* Sky — cool bridge */
-  --chart-4: oklch(0.50 0.17 155);   /* Emerald — success/positive */
-  --chart-5: oklch(0.72 0.16 80);    /* Amber — warm accent */
+  /* ── Chart Colors: Professional cohesive palette ── */
+  --chart-1: oklch(0.42 0.11 168);   /* Teal — primary */
+  --chart-2: oklch(0.68 0.15 75);    /* Amber — warm accent */
+  --chart-3: oklch(0.55 0.12 145);   /* Sage green — growth */
+  --chart-4: oklch(0.55 0.18 340);   /* Rose — attention */
+  --chart-5: oklch(0.50 0.05 260);   /* Slate — neutral */
 
-  /* ── Sidebar ──
-     Soft violet surface — premium and cohesive. */
-  --sidebar: oklch(0.975 0.01 290);
-  --sidebar-foreground: oklch(0.145 0.015 290);
-  --sidebar-primary: oklch(0.48 0.20 290);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.95 0.025 20);
-  --sidebar-accent-foreground: oklch(0.30 0.06 20);
-  --sidebar-border: oklch(0.90 0.01 290);
-  --sidebar-ring: oklch(0.48 0.20 290);
+  /* ── Sidebar ── */
+  --sidebar: oklch(0.985 0.005 168);
+  --sidebar-foreground: oklch(0.16 0.02 168);
+  --sidebar-primary: oklch(0.42 0.11 168);
+  --sidebar-primary-foreground: oklch(0.985 0.005 168);
+  --sidebar-accent: oklch(0.955 0.02 75);
+  --sidebar-accent-foreground: oklch(0.28 0.04 75);
+  --sidebar-border: oklch(0.90 0.01 168);
+  --sidebar-ring: oklch(0.42 0.11 168);
 
-  /* ── Custom Semantic Colors (Light Mode) ──
-     Task status and priority indicators. */
-
-  /* DOING status / LOW priority — Vibrant sky blue (hue 230) */
-  --sky: oklch(0.50 0.15 230);
-  --sky-foreground: oklch(0.985 0 0);
-
-  /* MEDIUM priority — Rich amber (hue 80) */
-  --amber: oklch(0.72 0.16 80);
-  --amber-foreground: oklch(0.25 0.04 80);
-
-  /* DONE status — Vibrant emerald (hue 155) */
-  --emerald: oklch(0.50 0.17 155);
-  --emerald-foreground: oklch(0.985 0 0);
-
-  /* CRITICAL priority / OVERDUE status — Vivid coral (hue 20) */
-  --coral: oklch(0.60 0.20 20);
-  --coral-foreground: oklch(0.985 0 0);
-
-  /* HIGH priority — Vivid orange (hue 55) */
-  --orange: oklch(0.65 0.18 55);
-  --orange-foreground: oklch(0.25 0.04 55);
+  /* ── Custom Semantic Colors (Light Mode) ── */
+  --teal: oklch(0.42 0.11 168);
+  --teal-foreground: oklch(0.985 0.005 168);
+  --amber: oklch(0.68 0.14 75);
+  --amber-foreground: oklch(0.28 0.04 75);
+  --emerald: oklch(0.52 0.13 155);
+  --emerald-foreground: oklch(0.985 0.005 155);
+  --rose: oklch(0.55 0.18 20);
+  --rose-foreground: oklch(0.985 0.005 20);
+  --orange: oklch(0.62 0.16 55);
+  --orange-foreground: oklch(0.985 0.005 55);
 }
 
 .dark {
-  /* ── Background & Foreground ──
-     Deep violet-dark — cohesive dark mode with purple undertone. */
-  --background: oklch(0.14 0.015 290);
-  --foreground: oklch(0.96 0.005 290);
+  /* ── Background & Foreground ── */
+  --background: oklch(0.14 0.01 168);
+  --foreground: oklch(0.965 0.005 168);
 
-  /* ── Card ──
-     Slightly lighter with violet tint. */
-  --card: oklch(0.18 0.018 290);
-  --card-foreground: oklch(0.96 0.005 290);
+  /* ── Card ── */
+  --card: oklch(0.19 0.012 168);
+  --card-foreground: oklch(0.965 0.005 168);
 
   /* ── Popover ── */
-  --popover: oklch(0.18 0.018 290);
-  --popover-foreground: oklch(0.96 0.005 290);
+  --popover: oklch(0.19 0.012 168);
+  --popover-foreground: oklch(0.965 0.005 168);
 
-  /* ── Primary: Bright Violet for Dark Mode ──
-     Lighter and more saturated for dark backgrounds. */
-  --primary: oklch(0.68 0.20 290);
-  --primary-foreground: oklch(0.14 0.015 290);
+  /* ── Primary: Lighter teal for dark mode contrast ── */
+  --primary: oklch(0.62 0.14 168);
+  --primary-foreground: oklch(0.14 0.01 168);
 
-  /* ── Secondary: Deep Lavender ── */
-  --secondary: oklch(0.24 0.02 290);
-  --secondary-foreground: oklch(0.88 0.01 290);
+  /* ── Secondary ── */
+  --secondary: oklch(0.24 0.015 168);
+  --secondary-foreground: oklch(0.88 0.01 168);
 
   /* ── Muted ── */
-  --muted: oklch(0.24 0.015 290);
-  --muted-foreground: oklch(0.62 0.02 290);
+  --muted: oklch(0.24 0.012 168);
+  --muted-foreground: oklch(0.62 0.025 168);
 
-  /* ── Accent: Subtle Coral ── */
-  --accent: oklch(0.24 0.025 20);
-  --accent-foreground: oklch(0.88 0.02 20);
+  /* ── Accent ── */
+  --accent: oklch(0.24 0.02 75);
+  --accent-foreground: oklch(0.88 0.015 75);
 
-  /* ── Destructive: Bright Crimson ── */
-  --destructive: oklch(0.70 0.20 22);
+  /* ── Destructive ── */
+  --destructive: oklch(0.68 0.18 22);
 
   /* ── Border & Input ── */
-  --border: oklch(1 0.01 290 / 12%);
-  --input: oklch(1 0.01 290 / 15%);
-  --ring: oklch(0.68 0.20 290);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.62 0.14 168);
 
-  /* ── Chart Colors: Dark Mode ── */
-  --chart-1: oklch(0.68 0.20 290);   /* Violet */
-  --chart-2: oklch(0.75 0.18 20);    /* Coral */
-  --chart-3: oklch(0.65 0.14 230);   /* Sky */
-  --chart-4: oklch(0.65 0.17 155);   /* Emerald */
-  --chart-5: oklch(0.76 0.16 80);    /* Amber */
+  /* ── Chart Colors: Dark mode ── */
+  --chart-1: oklch(0.62 0.14 168);   /* Teal */
+  --chart-2: oklch(0.76 0.15 75);    /* Amber */
+  --chart-3: oklch(0.68 0.12 145);   /* Sage */
+  --chart-4: oklch(0.68 0.16 340);   /* Rose */
+  --chart-5: oklch(0.62 0.06 260);   /* Slate */
 
   /* ── Sidebar ── */
-  --sidebar: oklch(0.15 0.018 290);
-  --sidebar-foreground: oklch(0.96 0.005 290);
-  --sidebar-primary: oklch(0.68 0.20 290);
-  --sidebar-primary-foreground: oklch(0.14 0.015 290);
-  --sidebar-accent: oklch(0.24 0.025 20);
-  --sidebar-accent-foreground: oklch(0.88 0.02 20);
-  --sidebar-border: oklch(1 0.01 290 / 12%);
-  --sidebar-ring: oklch(0.68 0.20 290);
+  --sidebar: oklch(0.19 0.012 168);
+  --sidebar-foreground: oklch(0.965 0.005 168);
+  --sidebar-primary: oklch(0.62 0.14 168);
+  --sidebar-primary-foreground: oklch(0.14 0.01 168);
+  --sidebar-accent: oklch(0.24 0.02 75);
+  --sidebar-accent-foreground: oklch(0.88 0.015 75);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.62 0.14 168);
 
   /* ── Custom Semantic Colors (Dark Mode) ── */
-
-  /* DOING status / LOW priority */
-  --sky: oklch(0.65 0.14 230);
-  --sky-foreground: oklch(0.16 0.01 290);
-
-  /* MEDIUM priority */
-  --amber: oklch(0.76 0.16 80);
-  --amber-foreground: oklch(0.25 0.04 80);
-
-  /* DONE status */
-  --emerald: oklch(0.65 0.17 155);
-  --emerald-foreground: oklch(0.16 0.01 290);
-
-  /* CRITICAL priority / OVERDUE status */
-  --coral: oklch(0.70 0.18 20);
-  --coral-foreground: oklch(0.16 0.01 290);
-
-  /* HIGH priority */
-  --orange: oklch(0.70 0.18 55);
-  --orange-foreground: oklch(0.20 0.02 290);
+  --teal: oklch(0.62 0.14 168);
+  --teal-foreground: oklch(0.14 0.01 168);
+  --amber: oklch(0.76 0.15 75);
+  --amber-foreground: oklch(0.28 0.04 75);
+  --emerald: oklch(0.68 0.13 155);
+  --emerald-foreground: oklch(0.14 0.01 155);
+  --rose: oklch(0.68 0.16 20);
+  --rose-foreground: oklch(0.14 0.01 20);
+  --orange: oklch(0.72 0.16 55);
+  --orange-foreground: oklch(0.14 0.01 55);
 }
 
 @layer base {
@@ -287,7 +244,7 @@
   }
 }
 
-/* Custom scrollbar — professional thin style with violet tint */
+/* Custom scrollbar — professional thin style */
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;

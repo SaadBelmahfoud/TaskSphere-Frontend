@@ -8,8 +8,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import { useTasks, useTaskSearch, useCreateTask } from "@/hooks/useTasks";
 import { useUsers } from "@/hooks/useUsers";
-import type { TaskStatus, TaskPriority } from "@/types";
-import type { CreateTaskFormData } from "@/lib/schemas";
+import type { TaskStatus, TaskPriority, CreateTaskFormData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

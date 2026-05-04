@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createTaskSchema, updateTaskSchema, type CreateTaskFormData } from "@/lib/schemas";
+import { createTaskSchema, updateTaskSchema, type CreateTaskFormData, type UpdateTaskFormData } from "@/lib/schemas";
 import type { TaskResponse, TaskPriority } from "@/types";
 import { useUsers } from "@/hooks/useUsers";
 import { Button } from "@/components/ui/button";
@@ -32,27 +32,26 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Loader2, ChevronsUpDown, Check, UserPlus, X } from "lucide-react";
+import { Loader2, ChevronsUpDown, Check, UserPlus, X, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { priorityConfig } from "@/lib/task-config";
+import dynamic from "next/dynamic";
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
- * ═══════════════════════════════════════════════════════════════════
- *
- * AVANT : priorityConfig défini localement (6 lignes)
- * APRÈS : importé depuis @/lib/task-config (1 ligne)
- * ═══════════════════════════════════════════════════════════════════
- */
+// Phase 3: Dynamic import for TagSelector (code splitting)
+const TagSelector = dynamic(() => import("./TagSelector"), { ssr: false });
 
 interface TaskFormProps {
   task?: TaskResponse;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSubmit: (data: any) => void;
+  onSubmit: (data: CreateTaskFormData | UpdateTaskFormData) => void;
   loading?: boolean;
   mode: "create" | "edit";
 }
+
+const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
+  LOW: { label: "Low", color: "bg-teal/10 text-teal" },
+  MEDIUM: { label: "Medium", color: "bg-amber/15 text-amber" },
+  HIGH: { label: "High", color: "bg-orange/15 text-orange" },
+  CRITICAL: { label: "Critical", color: "bg-rose/15 text-rose" },
+};
 
 export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProps) {
   const schema = mode === "create" ? createTaskSchema : updateTaskSchema;
@@ -65,8 +64,7 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
     watch,
     formState: { errors },
   } = useForm<CreateTaskFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(schema) as any,
+    resolver: zodResolver(schema),
     defaultValues: task
       ? {
           title: task.title,
@@ -88,6 +86,11 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
 
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const selectedAssigneeId = watch("assigneeId");
+
+  // Phase 3: Tags state
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    task?.tags?.map((t) => t.id) || []
+  );
 
   const selectedUser = users?.find((u) => u.email === selectedAssigneeId);
 
@@ -143,7 +146,7 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
             <SelectContent>
-              {(Object.entries(priorityConfig) as [string, typeof priorityConfig[string]][]).map(
+              {(Object.entries(priorityConfig) as [TaskPriority, typeof priorityConfig[TaskPriority]][]).map(
                 ([value, config]) => (
                   <SelectItem key={value} value={value}>
                     <div className="flex items-center gap-2">
@@ -224,6 +227,9 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
                             onSelect={() => {
                               // CORRECTION : Envoyer user.email (pas user.id)
                               // Le backend TaskEntity.assigneeId stocke un EMAIL
+                              // (pas un UUID). La requête searchTasksForUser compare
+                              // t.assigneeId = :username (email du JWT).
+                              // Si on envoie un UUID, la query ne matchera JAMAIS.
                               setValue("assigneeId", user.email);
                               setAssigneeOpen(false);
                             }}
@@ -270,6 +276,18 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
           </div>
         </div>
       )}
+
+      {/* Tags (Phase 3) */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium flex items-center gap-1.5">
+          <Tag className="h-3.5 w-3.5" />
+          Tags
+        </Label>
+        <TagSelector
+          selectedTagIds={selectedTagIds}
+          onChange={setSelectedTagIds}
+        />
+      </div>
 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

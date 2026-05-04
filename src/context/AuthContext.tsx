@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (data: LoginRequest) => {
     const res = await api.post("/auth/login", data);
-    const { accessToken, refreshToken, expiresIn } = res.data;
+    const { accessToken, refreshToken, tokenType, expiresIn } = res.data;
     const tokenExpiry = Date.now() + (expiresIn || 3600) * 1000;
 
     // Decode JWT to get email and role

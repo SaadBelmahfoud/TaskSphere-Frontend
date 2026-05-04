@@ -37,6 +37,12 @@ export interface AuthState {
 export type TaskStatus = 'TODO' | 'DOING' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export interface TagResponse {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface TaskResponse {
   id: string;
   title: string;
@@ -48,6 +54,7 @@ export interface TaskResponse {
   createdAt: string | null;
   userId: string;
   assigneeId?: string | null;
+  tags?: TagResponse[];
 }
 
 export interface TaskCreateRequest {
@@ -56,6 +63,7 @@ export interface TaskCreateRequest {
   priority?: string;
   dueDate?: string;
   assigneeId?: string;
+  tagIds?: string[];
 }
 
 export interface TaskUpdateRequest {
@@ -63,6 +71,7 @@ export interface TaskUpdateRequest {
   description?: string;
   priority?: string;
   dueDate?: string;
+  tagIds?: string[];
 }
 
 export interface TaskStatusRequest {
@@ -108,7 +117,35 @@ export interface DashboardStatsResponse {
   overdueTasks: number;
 }
 
+// ===== Burndown / Velocity (Phase 3) =====
+export interface BurndownPoint {
+  date: string;
+  remaining: number;
+  idealRemaining: number;
+}
+
+export interface BurndownDataResponse {
+  totalTasks: number;
+  points: BurndownPoint[];
+}
+
+export interface VelocityPoint {
+  weekStart: string;
+  completed: number;
+}
+
+export interface VelocityDataResponse {
+  averageVelocity: number;
+  points: VelocityPoint[];
+}
+
 // ===== Activity Log =====
+export interface ChangeDetail {
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
+}
+
 export interface ActivityLogResponse {
   id: string;
   action: string;
@@ -117,6 +154,7 @@ export interface ActivityLogResponse {
   taskId: string | null;
   taskTitle: string | null;
   timestamp: string;
+  changeDetails?: ChangeDetail[];
 }
 
 export interface ActivityLogPageResponse {
@@ -143,6 +181,37 @@ export interface CommentCreateRequest {
 
 export interface CommentUpdateRequest {
   content: string;
+}
+
+// ===== Notifications (Phase 3) =====
+export interface NotificationResponse {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  taskId: string | null;
+  actorUsername: string | null;
+  targetUsername: string;
+  read: boolean;
+  createdAt: string;
+}
+
+// ===== Tags (Phase 3) =====
+export interface TagCreateRequest {
+  name: string;
+  color?: string;
+}
+
+// ===== Attachments (Phase 3) =====
+export interface AttachmentResponse {
+  id: string;
+  taskId: string;
+  originalFilename: string;
+  storedFilename: string;
+  contentType: string;
+  fileSize: number;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 // ===== User / Admin =====

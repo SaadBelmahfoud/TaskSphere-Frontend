@@ -1,31 +1,7 @@
-/**
- * ═══════════════════════════════════════════════════════════════════
- * KANBAN PAGE — Dynamic imports + Shared config
- * ═══════════════════════════════════════════════════════════════════
- *
- * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
- * PHASE 2 — TÂCHE 4 : Dynamic() imports pour @dnd-kit
- * ──────────────────────────────────────────────────────
- *
- * TÂCHE 2 :
- *   AVANT : COLUMNS + priorityVariant + priorityColorClass définis localement
- *   APRÈS : importés depuis @/lib/task-config (KANBAN_COLUMNS, priorityConfig)
- *
- * TÂCHE 4 :
- *   AVANT : import statique de @dnd-kit/core (inclut dans le bundle initial)
- *   APRÈS : dynamic() import → @dnd-kit n'est chargé QUE quand la page
- *   est visitée. Réduit le bundle initial de ~50KB (gzipped).
- *
- *   PRINCIPE : Code Splitting
- *   Next.js dynamic() utilise React.lazy() + Suspense en interne.
- *   Le code de @dnd-kit est dans un chunk séparé qui n'est chargé
- *   que quand l'utilisateur visite /kanban.
- */
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { useAuth } from "@/context/AuthContext";
 import AppLayout from "@/components/AppLayout";
 import { useTasks, useChangeTaskStatus } from "@/hooks/useTasks";
@@ -37,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  DndContext,
   DragOverlay,
   closestCorners,
   PointerSensor,
@@ -51,24 +28,26 @@ import Link from "next/link";
 import { GripVertical, Calendar, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { KANBAN_COLUMNS, priorityConfig } from "@/lib/task-config";
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * PHASE 2 — TÂCHE 4 : Dynamic import de DndContext
- * ═══════════════════════════════════════════════════════════════════
- *
- * DndContext est le composant racine de @dnd-kit.
- * Il pèse ~30KB gzipped et n'est utilisé QUE sur cette page.
- * En l'important dynamiquement, on réduit le bundle initial.
- *
- * ssr: false car @dnd-kit utilise des APIs navigateur (DOM measurements)
- * qui ne sont pas disponibles côté serveur.
- */
-const DndContext = dynamic(
-  () => import("@dnd-kit/core").then((mod) => mod.DndContext),
-  { ssr: false }
-);
+const COLUMNS: { status: TaskStatus; label: string; color: string; bgColor: string; headerColor: string }[] = [
+  { status: "TODO", label: "To Do", color: "border-l-muted-foreground", bgColor: "bg-muted/30", headerColor: "text-muted-foreground" },
+  { status: "DOING", label: "In Progress", color: "border-l-teal", bgColor: "bg-muted/30", headerColor: "text-teal" },
+  { status: "DONE", label: "Done", color: "border-l-emerald", bgColor: "bg-muted/30", headerColor: "text-emerald" },
+];
+
+const priorityVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  LOW: "outline",
+  MEDIUM: "secondary",
+  HIGH: "default",
+  CRITICAL: "destructive",
+};
+
+const priorityColorClass: Record<string, string> = {
+  LOW: "bg-teal/10 text-teal",
+  MEDIUM: "bg-amber/15 text-amber",
+  HIGH: "bg-orange/15 text-orange",
+  CRITICAL: "bg-rose/15 text-rose",
+};
 
 function DroppableColumn({
   status,
@@ -113,7 +92,6 @@ function DroppableColumn({
 
 function KanbanCard({ task, assigneeName }: { task: TaskResponse; assigneeName?: string }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
-  const priorityConf = priorityConfig[task.priority] || priorityConfig.MEDIUM;
 
   return (
     <Link href={`/tasks/${task.id}`}>
@@ -125,10 +103,10 @@ function KanbanCard({ task, assigneeName }: { task: TaskResponse; assigneeName?:
               <p className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">{task.title}</p>
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <Badge
-                  variant={priorityConf.variant}
-                  className={cn("text-[10px] px-1.5 py-0", priorityConf.color)}
+                  variant={priorityVariant[task.priority] || "outline"}
+                  className={cn("text-[10px] px-1.5 py-0", priorityColorClass[task.priority] || "")}
                 >
-                  {priorityConf.label}
+                  {task.priority}
                 </Badge>
                 {isOverdue && (
                   <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
@@ -180,6 +158,7 @@ export default function KanbanPage() {
   );
 
   // CORRECTION : userMap keyé par email (pas UUID)
+  // car task.assigneeId stocke un email dans le backend
   const userMap = new Map(users?.map((u) => [u.email, `${u.firstName} ${u.lastName}`]));
 
   const localTasks = tasksData?.content
@@ -259,7 +238,7 @@ export default function KanbanPage() {
             onDragEnd={handleDragEnd}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {KANBAN_COLUMNS.map((col) => (
+              {COLUMNS.map((col) => (
                 <DroppableColumn
                   key={col.status}
                   status={col.status}

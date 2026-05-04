@@ -120,7 +120,7 @@ export function useTheme() {
   if (!ctx) {
     return {
       theme: "system" as Theme,
-      setTheme: (_t: Theme) => {},
+      setTheme: (_theme: Theme) => {},
       resolvedTheme: "light" as const,
     };
   }

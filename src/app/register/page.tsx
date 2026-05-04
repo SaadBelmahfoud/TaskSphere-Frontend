@@ -1,113 +1,96 @@
-/**
- * ═══════════════════════════════════════════════════════════════════
- * REGISTER PAGE — React Hook Form + Zod Validation
- * ═══════════════════════════════════════════════════════════════════
- *
- * PHASE 2 — TÂCHE 3 : Refactor avec React Hook Form
- * ──────────────────────────────────────────────────────
- *
- * AVANT : useState + safeParse manuel (6 champs × onChange)
- * APRÈS : react-hook-form + zodResolver (register auto)
- *
- * AVANTAGES IDENTIQUES AU LOGIN (voir page.tsx) :
- *   - Moins de code, validation au blur, gestion auto des erreurs
- *   - Consistance avec TaskForm.tsx
- *
- * NOTE SUR LE SCHEMA ZOD :
- *   registerSchema contient déjà le refine() pour vérifier
- *   password === confirmPassword. react-hook-form + zodResolver
- *   gère automatiquement cette validation croisée.
- */
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { registerSchema, type RegisterFormData } from "@/lib/schemas";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { Loader2, ArrowRight, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Loader2, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
-  const { register: registerUser } = useAuth();
+  const { register } = useAuth();
   const router = useRouter();
-  const [serverError, setServerError] = useState("");
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
+  const [form, setForm] = useState({
+    username: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setServerError("");
+    setErrors({});
+
+    const result = registerSchema.safeParse(form);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        fieldErrors[issue.path[0] as string] = issue.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setLoading(true);
     try {
-      await registerUser(data);
+      await register(form);
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setServerError(error.response?.data?.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-sky/5 blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-coral/5 blur-3xl" />
-      </div>
+  const updateField = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
 
-      <div className="w-full max-w-md space-y-6 relative z-10">
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
+      <div className="w-full max-w-md space-y-6">
         {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-xl shadow-primary/25 -rotate-3 hover:rotate-0 transition-transform duration-300">
-            <span className="text-primary-foreground font-bold text-2xl">TS</span>
+          <div className="mx-auto mb-4 w-14 h-14 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <span className="text-primary-foreground font-bold text-xl">TS</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create Account</h1>
-          <p className="text-muted-foreground mt-1 flex items-center justify-center gap-1.5">
-            <Sparkles className="h-4 w-4 text-coral" />
-            Join TaskSphere to manage your tasks
-          </p>
+          <p className="text-muted-foreground mt-1">Join TaskSphere to manage your tasks</p>
         </div>
 
-        <Card className="shadow-xl border-primary/10">
+        <Card className="shadow-lg">
           <CardContent className="pt-6">
             {serverError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertDescription>{serverError}</AlertDescription>
               </Alert>
             )}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   placeholder="johndoe"
-                  {...register("username")}
-                  disabled={isSubmitting}
-                  className="transition-colors focus-visible:ring-primary/30"
+                  value={form.username}
+                  onChange={(e) => updateField("username", e.target.value)}
+                  disabled={loading}
+                  className="transition-colors"
                   autoFocus
                 />
                 {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username.message}</p>
+                  <p className="text-sm text-destructive">{errors.username}</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -116,12 +99,13 @@ export default function RegisterPage() {
                   <Input
                     id="firstName"
                     placeholder="John"
-                    {...register("firstName")}
-                    disabled={isSubmitting}
-                    className="transition-colors focus-visible:ring-primary/30"
+                    value={form.firstName}
+                    onChange={(e) => updateField("firstName", e.target.value)}
+                    disabled={loading}
+                    className="transition-colors"
                   />
                   {errors.firstName && (
-                    <p className="text-sm text-destructive">{errors.firstName.message}</p>
+                    <p className="text-sm text-destructive">{errors.firstName}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -129,12 +113,13 @@ export default function RegisterPage() {
                   <Input
                     id="lastName"
                     placeholder="Doe"
-                    {...register("lastName")}
-                    disabled={isSubmitting}
-                    className="transition-colors focus-visible:ring-primary/30"
+                    value={form.lastName}
+                    onChange={(e) => updateField("lastName", e.target.value)}
+                    disabled={loading}
+                    className="transition-colors"
                   />
                   {errors.lastName && (
-                    <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                    <p className="text-sm text-destructive">{errors.lastName}</p>
                   )}
                 </div>
               </div>
@@ -144,12 +129,13 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   placeholder="you@example.com"
-                  {...register("email")}
-                  disabled={isSubmitting}
-                  className="transition-colors focus-visible:ring-primary/30"
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                  disabled={loading}
+                  className="transition-colors"
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p className="text-sm text-destructive">{errors.email}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -158,12 +144,13 @@ export default function RegisterPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  {...register("password")}
-                  disabled={isSubmitting}
-                  className="transition-colors focus-visible:ring-primary/30"
+                  value={form.password}
+                  onChange={(e) => updateField("password", e.target.value)}
+                  disabled={loading}
+                  className="transition-colors"
                 />
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                  <p className="text-sm text-destructive">{errors.password}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -172,16 +159,17 @@ export default function RegisterPage() {
                   id="confirmPassword"
                   type="password"
                   placeholder="••••••••"
-                  {...register("confirmPassword")}
-                  disabled={isSubmitting}
-                  className="transition-colors focus-visible:ring-primary/30"
+                  value={form.confirmPassword}
+                  onChange={(e) => updateField("confirmPassword", e.target.value)}
+                  disabled={loading}
+                  className="transition-colors"
                 />
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary/85 hover:from-primary/90 hover:to-primary/75 shadow-md shadow-primary/20 transition-all duration-200" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <ArrowRight className="mr-2 h-4 w-4" />

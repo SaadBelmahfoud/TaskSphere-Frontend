@@ -1,33 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import type { TaskResponse } from "@/types";
+import type { TaskResponse, TaskStatus, TaskPriority } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, UserCircle, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { statusConfig, priorityConfig } from "@/lib/task-config";
+
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; dotColor: string }> = {
+  TODO: { label: "To Do", variant: "outline", dotColor: "bg-muted-foreground" },
+  DOING: { label: "In Progress", variant: "secondary", dotColor: "bg-primary" },
+  DONE: { label: "Done", variant: "default", dotColor: "bg-primary" },
+};
+
+const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
+  LOW: { label: "Low", variant: "outline", color: "bg-teal/10 text-teal" },
+  MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
+  HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
+  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-rose/15 text-rose" },
+};
 
 interface TaskCardProps {
   task: TaskResponse;
   assigneeName?: string;
 }
 
-/**
- * ═══════════════════════════════════════════════════════════════════
- * PHASE 2 — TÂCHE 2 : Utilisation du module partagé task-config
- * ═══════════════════════════════════════════════════════════════════
- *
- * AVANT : statusConfig + priorityConfig définis localement (12 lignes)
- * APRÈS : importés depuis @/lib/task-config (1 ligne)
- *
- * AVANTAGE : Si on change la couleur d'un statut, il suffit de
- * modifier task-config.ts. TaskCard, TaskForm, TaskDetail, Kanban
- * et Dashboard sont automatiquement mis à jour.
- * ═══════════════════════════════════════════════════════════════════
- */
 export default function TaskCard({ task, assigneeName }: TaskCardProps) {
   const statusConf = statusConfig[task.status] || statusConfig.TODO;
   const priorityConf = priorityConfig[task.priority] || priorityConfig.MEDIUM;
@@ -58,6 +57,25 @@ export default function TaskCard({ task, assigneeName }: TaskCardProps) {
             <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
               {task.description}
             </p>
+          )}
+
+          {/* Tags (Phase 3) */}
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex items-center gap-1 mt-2 flex-wrap">
+              {task.tags.slice(0, 3).map((tag) => (
+                <Badge
+                  key={tag.id}
+                  variant="outline"
+                  className="text-[9px] px-1.5 py-0 h-4 gap-0.5"
+                  style={{ backgroundColor: tag.color + "15", color: tag.color, borderColor: tag.color + "30" }}
+                >
+                  {tag.name}
+                </Badge>
+              ))}
+              {task.tags.length > 3 && (
+                <span className="text-[9px] text-muted-foreground">+{task.tags.length - 3}</span>
+              )}
+            </div>
           )}
 
           {/* Meta info */}
