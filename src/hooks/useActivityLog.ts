@@ -9,7 +9,12 @@ export function useActivityLog(page: number = 0, size: number = 20, taskId?: str
       const params: Record<string, string | number> = { page, size };
       if (taskId) params.taskId = taskId;
       const res = await api.get("/activities", { params });
+      if (!res.data || (res.data.content && !Array.isArray(res.data.content))) {
+        console.error("[useActivityLog] Unexpected API response:", res.data);
+      }
       return res.data;
     },
+    retry: 1,
+    enabled: true,
   });
 }

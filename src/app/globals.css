@@ -5,39 +5,37 @@
 
 /**
  * ═══════════════════════════════════════════════════════════
- * TASKSPHERE — Professional Color Palette v2
+ * TASKSPHERE — Violet Bloom Color Palette
  * ═══════════════════════════════════════════════════════════
  *
  * DESIGN PHILOSOPHY:
  * ──────────────────
- * Professional, muted, enterprise-grade palette inspired by
- * Linear, Notion, and GitHub. The primary color is a sophisticated
- * dark teal (hue ~168) — distinctly NOT blue, NOT bright green —
- * a balanced, trustworthy tone.
+ * Rich, expressive violet primary with warm amber accents.
+ * Light mode is bright and clean; dark mode is deep and luxurious.
  *
  * COLOR DECISIONS:
  * ┌─────────────┬──────────────────────────────────────────┐
- * │ Primary     │ Dark teal — professional, trustworthy    │
- * │ Secondary   │ Warm slate — neutral, supportive         │
- * │ Accent      │ Muted amber — attention without alarm    │
- * │ Destructive │ Muted rose — clear but not aggressive    │
- * │ Charts      │ Cohesive teal-amber-rose-slate palette   │
+ * │ Primary     │ Rich violet — creative, distinctive      │
+ * │ Secondary   │ Soft lavender — neutral, supportive      │
+ * │ Accent      │ Warm amber/gold — attention without alarm│
+ * │ Destructive │ Rose — clear but not aggressive          │
+ * │ Charts      │ Cohesive violet-amber-rose-sky palette   │
  * └─────────────┴──────────────────────────────────────────┘
  *
  * SEMANTIC STATUS COLORS:
  * ┌──────────────┬─────────────────────────────────────┐
- * │ TODO         │ Slate — neutral, pending             │
- * │ DOING        │ Teal — active, in progress           │
+ * │ TODO         │ Muted — neutral, pending             │
+ * │ DOING        │ Sky — active, in progress            │
  * │ DONE         │ Emerald — completed, success         │
  * │ OVERDUE      │ Rose — urgent, attention needed      │
  * └──────────────┴─────────────────────────────────────┘
  *
  * SEMANTIC PRIORITY COLORS:
  * ┌──────────────┬─────────────────────────────────────┐
- * │ LOW          │ Teal — calm, low urgency             │
+ * │ LOW          │ Sky — calm, low urgency              │
  * │ MEDIUM       │ Amber — moderate attention           │
  * │ HIGH         │ Orange — important, elevated         │
- * │ CRITICAL     │ Rose — urgent, immediate action      │
+ * │ CRITICAL     │ Coral — urgent, immediate action     │
  * └──────────────┴─────────────────────────────────────┘
  *
  * OKLCH COLOR SPACE:
@@ -45,7 +43,7 @@
  * All colors use oklch() for perceptual uniformity.
  * - L = lightness (0=black, 1=white)
  * - C = chroma (0=gray, higher=more saturated)
- * - H = hue (0=red, 90=lime, 180=cyan, 270=blue, 360=red)
+ * - H = hue (0=red, 90=lime, 180=cyan, 270=blue, 295=violet, 360=red)
  */
 @theme inline {
   --color-background: var(--background);
@@ -97,63 +95,67 @@
   --color-rose-foreground: var(--rose-foreground);
   --color-orange: var(--orange);
   --color-orange-foreground: var(--orange-foreground);
+  --color-sky: var(--sky);
+  --color-sky-foreground: var(--sky-foreground);
+  --color-coral: var(--coral);
+  --color-coral-foreground: var(--coral-foreground);
 }
 
 :root {
   --radius: 0.625rem;
 
   /* ── Background & Foreground ── */
-  --background: oklch(0.985 0.002 168);
-  --foreground: oklch(0.16 0.02 168);
+  --background: oklch(0.985 0.005 295);
+  --foreground: oklch(0.16 0.03 295);
 
   /* ── Card ── */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.02 168);
+  --card-foreground: oklch(0.16 0.03 295);
 
   /* ── Popover ── */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.02 168);
+  --popover-foreground: oklch(0.16 0.03 295);
 
-  /* ── Primary: Deep professional teal ── */
-  --primary: oklch(0.42 0.11 168);
-  --primary-foreground: oklch(0.985 0.005 168);
+  /* ── Primary: Rich violet ── */
+  --primary: oklch(0.45 0.18 295);
+  --primary-foreground: oklch(0.985 0.005 295);
 
-  /* ── Secondary: Warm slate ── */
-  --secondary: oklch(0.955 0.01 168);
-  --secondary-foreground: oklch(0.28 0.02 168);
+  /* ── Secondary: Soft lavender ── */
+  --secondary: oklch(0.955 0.015 295);
+  --secondary-foreground: oklch(0.28 0.04 295);
 
   /* ── Muted ── */
-  --muted: oklch(0.955 0.008 168);
-  --muted-foreground: oklch(0.50 0.02 168);
+  --muted: oklch(0.955 0.012 295);
+  --muted-foreground: oklch(0.50 0.03 295);
 
-  /* ── Accent: Warm amber ── */
-  --accent: oklch(0.955 0.02 75);
-  --accent-foreground: oklch(0.28 0.04 75);
+  /* ── Accent: Warm amber/gold ── */
+  --accent: oklch(0.955 0.03 80);
+  --accent-foreground: oklch(0.28 0.06 80);
 
-  /* ── Destructive: Muted rose ── */
-  --destructive: oklch(0.55 0.20 25);
+  /* ── Destructive: Rose ── */
+  --destructive: oklch(0.55 0.22 20);
 
   /* ── Border & Input ── */
-  --border: oklch(0.90 0.01 168);
-  --input: oklch(0.90 0.01 168);
-  --ring: oklch(0.42 0.11 168);
+  --border: oklch(0.90 0.012 295);
+  --input: oklch(0.90 0.012 295);
+  --ring: oklch(0.45 0.18 295);
 
-  /* ── Chart Colors: Professional cohesive palette ── */
-  --chart-1: oklch(0.42 0.11 168);   /* Teal — primary */
-  --chart-2: oklch(0.68 0.15 75);    /* Amber — warm accent */
-  --chart-3: oklch(0.55 0.12 145);   /* Sage green — growth */
+  /* ── Chart Colors: Violet Bloom palette ── */
+  --chart-1: oklch(0.45 0.18 295);   /* Violet — primary */
+  --chart-2: oklch(0.68 0.15 80);    /* Amber — warm accent */
+  --chart-3: oklch(0.52 0.13 155);   /* Emerald — growth */
   --chart-4: oklch(0.55 0.18 340);   /* Rose — attention */
-  --chart-5: oklch(0.50 0.05 260);   /* Slate — neutral */
+  --chart-5: oklch(0.62 0.15 230);   /* Sky — calm */
 
   /* ── Sidebar ── */
-  --sidebar: oklch(0.985 0.005 168);
-  --sidebar-foreground: oklch(0.16 0.02 168);
-  --sidebar-primary: oklch(0.42 0.11 168);
-  --sidebar-primary-foreground: oklch(0.985 0.005 168);
-  --sidebar-accent: oklch(0.955 0.02 75);
-  --sidebar-accent-foreground: oklch(0.28 0.04 75);
-  --sidebar-border: oklch(0.90 0.01 168);
-  --sidebar-ring: oklch(0.42 0.11 168);
+  --sidebar: oklch(0.985 0.005 295);
+  --sidebar-foreground: oklch(0.16 0.03 295);
+  --sidebar-primary: oklch(0.45 0.18 295);
+  --sidebar-primary-foreground: oklch(0.985 0.005 295);
+  --sidebar-accent: oklch(0.955 0.03 80);
+  --sidebar-accent-foreground: oklch(0.28 0.06 80);
+  --sidebar-border: oklch(0.90 0.012 295);
+  --sidebar-ring: oklch(0.45 0.18 295);
 
   /* ── Custom Semantic Colors (Light Mode) ── */
   --teal: oklch(0.42 0.11 168);
@@ -166,61 +168,65 @@
   --rose-foreground: oklch(0.985 0.005 20);
   --orange: oklch(0.62 0.16 55);
   --orange-foreground: oklch(0.985 0.005 55);
+  --sky: oklch(0.62 0.15 230);
+  --sky-foreground: oklch(0.985 0.005 230);
+  --coral: oklch(0.65 0.18 25);
+  --coral-foreground: oklch(0.985 0.005 25);
 }
 
 .dark {
   /* ── Background & Foreground ── */
-  --background: oklch(0.14 0.01 168);
-  --foreground: oklch(0.965 0.005 168);
+  --background: oklch(0.14 0.015 295);
+  --foreground: oklch(0.965 0.008 295);
 
   /* ── Card ── */
-  --card: oklch(0.19 0.012 168);
-  --card-foreground: oklch(0.965 0.005 168);
+  --card: oklch(0.19 0.018 295);
+  --card-foreground: oklch(0.965 0.008 295);
 
   /* ── Popover ── */
-  --popover: oklch(0.19 0.012 168);
-  --popover-foreground: oklch(0.965 0.005 168);
+  --popover: oklch(0.19 0.018 295);
+  --popover-foreground: oklch(0.965 0.008 295);
 
-  /* ── Primary: Lighter teal for dark mode contrast ── */
-  --primary: oklch(0.62 0.14 168);
-  --primary-foreground: oklch(0.14 0.01 168);
+  /* ── Primary: Lighter violet for dark mode contrast ── */
+  --primary: oklch(0.65 0.20 295);
+  --primary-foreground: oklch(0.14 0.015 295);
 
   /* ── Secondary ── */
-  --secondary: oklch(0.24 0.015 168);
-  --secondary-foreground: oklch(0.88 0.01 168);
+  --secondary: oklch(0.24 0.02 295);
+  --secondary-foreground: oklch(0.88 0.012 295);
 
   /* ── Muted ── */
-  --muted: oklch(0.24 0.012 168);
-  --muted-foreground: oklch(0.62 0.025 168);
+  --muted: oklch(0.24 0.015 295);
+  --muted-foreground: oklch(0.62 0.03 295);
 
   /* ── Accent ── */
-  --accent: oklch(0.24 0.02 75);
-  --accent-foreground: oklch(0.88 0.015 75);
+  --accent: oklch(0.24 0.03 80);
+  --accent-foreground: oklch(0.88 0.02 80);
 
   /* ── Destructive ── */
-  --destructive: oklch(0.68 0.18 22);
+  --destructive: oklch(0.68 0.20 20);
 
   /* ── Border & Input ── */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.14 168);
+  --ring: oklch(0.65 0.20 295);
 
   /* ── Chart Colors: Dark mode ── */
-  --chart-1: oklch(0.62 0.14 168);   /* Teal */
-  --chart-2: oklch(0.76 0.15 75);    /* Amber */
-  --chart-3: oklch(0.68 0.12 145);   /* Sage */
+  --chart-1: oklch(0.65 0.20 295);   /* Violet */
+  --chart-2: oklch(0.76 0.15 80);    /* Amber */
+  --chart-3: oklch(0.68 0.13 155);   /* Emerald */
   --chart-4: oklch(0.68 0.16 340);   /* Rose */
-  --chart-5: oklch(0.62 0.06 260);   /* Slate */
+  --chart-5: oklch(0.72 0.15 230);   /* Sky */
 
   /* ── Sidebar ── */
-  --sidebar: oklch(0.19 0.012 168);
-  --sidebar-foreground: oklch(0.965 0.005 168);
-  --sidebar-primary: oklch(0.62 0.14 168);
-  --sidebar-primary-foreground: oklch(0.14 0.01 168);
-  --sidebar-accent: oklch(0.24 0.02 75);
-  --sidebar-accent-foreground: oklch(0.88 0.015 75);
+  --sidebar: oklch(0.19 0.018 295);
+  --sidebar-foreground: oklch(0.965 0.008 295);
+  --sidebar-primary: oklch(0.65 0.20 295);
+  --sidebar-primary-foreground: oklch(0.14 0.015 295);
+  --sidebar-accent: oklch(0.24 0.03 80);
+  --sidebar-accent-foreground: oklch(0.88 0.02 80);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.14 168);
+  --sidebar-ring: oklch(0.65 0.20 295);
 
   /* ── Custom Semantic Colors (Dark Mode) ── */
   --teal: oklch(0.62 0.14 168);
@@ -233,6 +239,10 @@
   --rose-foreground: oklch(0.14 0.01 20);
   --orange: oklch(0.72 0.16 55);
   --orange-foreground: oklch(0.14 0.01 55);
+  --sky: oklch(0.72 0.15 230);
+  --sky-foreground: oklch(0.14 0.01 230);
+  --coral: oklch(0.72 0.18 25);
+  --coral-foreground: oklch(0.14 0.01 25);
 }
 
 @layer base {

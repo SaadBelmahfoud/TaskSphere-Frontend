@@ -58,6 +58,7 @@ export function useCreateTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task created successfully");
     },
     onError: () => {
@@ -77,6 +78,7 @@ export function useUpdateTask() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task updated successfully");
     },
     onError: () => {
@@ -113,6 +115,7 @@ export function useChangeTaskStatus() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task status updated");
     },
     onError: () => {
@@ -131,6 +134,7 @@ export function useAssignTask() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
+      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task assigned successfully");
     },
     onError: () => {

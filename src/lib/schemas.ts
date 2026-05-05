@@ -25,6 +25,7 @@ export const createTaskSchema = z.object({
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
   dueDate: z.string().optional(),
   assigneeId: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -32,6 +33,7 @@ export const updateTaskSchema = z.object({
   description: z.string().min(1, "Description is required").optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional(),
   dueDate: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
 });
 
 export const commentSchema = z.object({

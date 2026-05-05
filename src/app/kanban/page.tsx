@@ -19,11 +19,13 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
+  useDraggable,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
-import { useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { GripVertical, Calendar, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,7 +33,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const COLUMNS: { status: TaskStatus; label: string; color: string; bgColor: string; headerColor: string }[] = [
   { status: "TODO", label: "To Do", color: "border-l-muted-foreground", bgColor: "bg-muted/30", headerColor: "text-muted-foreground" },
-  { status: "DOING", label: "In Progress", color: "border-l-teal", bgColor: "bg-muted/30", headerColor: "text-teal" },
+  { status: "DOING", label: "In Progress", color: "border-l-sky", bgColor: "bg-muted/30", headerColor: "text-sky" },
   { status: "DONE", label: "Done", color: "border-l-emerald", bgColor: "bg-muted/30", headerColor: "text-emerald" },
 ];
 
@@ -43,10 +45,10 @@ const priorityVariant: Record<string, "default" | "secondary" | "destructive" | 
 };
 
 const priorityColorClass: Record<string, string> = {
-  LOW: "bg-teal/10 text-teal",
+  LOW: "bg-sky/10 text-sky",
   MEDIUM: "bg-amber/15 text-amber",
   HIGH: "bg-orange/15 text-orange",
-  CRITICAL: "bg-rose/15 text-rose",
+  CRITICAL: "bg-coral/15 text-coral",
 };
 
 function DroppableColumn({
@@ -92,54 +94,64 @@ function DroppableColumn({
 
 function KanbanCard({ task, assigneeName }: { task: TaskResponse; assigneeName?: string }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: task.id });
+  const dragStyle = transform
+    ? { transform: CSS.Transform.toString(transform) }
+    : undefined;
 
   return (
-    <Link href={`/tasks/${task.id}`}>
-      <Card className="cursor-grab hover:shadow-md transition-all duration-200 border-l-0 active:cursor-grabbing group">
-        <CardContent className="p-3">
-          <div className="flex items-start gap-2">
-            <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-0.5 group-hover:text-muted-foreground transition-colors" />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">{task.title}</p>
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                <Badge
-                  variant={priorityVariant[task.priority] || "outline"}
-                  className={cn("text-[10px] px-1.5 py-0", priorityColorClass[task.priority] || "")}
-                >
-                  {task.priority}
-                </Badge>
-                {isOverdue && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
-                    <AlertTriangle className="h-2.5 w-2.5" />
-                    Overdue
+    <div ref={setNodeRef} style={dragStyle} className="group">
+      <Link href={`/tasks/${task.id}`}>
+        <Card className="hover:shadow-md transition-all duration-200 border-l-0 active:cursor-grabbing">
+          <CardContent className="p-3">
+            <div className="flex items-start gap-2">
+              <GripVertical
+                className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-0.5 group-hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
+                {...listeners}
+                {...attributes}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">{task.title}</p>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <Badge
+                    variant={priorityVariant[task.priority] || "outline"}
+                    className={cn("text-[10px] px-1.5 py-0", priorityColorClass[task.priority] || "")}
+                  >
+                    {task.priority}
                   </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                {task.assigneeId && (
-                  <div className="flex items-center gap-1">
-                    <Avatar className="h-4 w-4">
-                      <AvatarFallback className="text-[7px] bg-primary/10 text-primary">
-                        {assigneeName
-                          ? assigneeName.substring(0, 2).toUpperCase()
-                          : task.assigneeId.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate max-w-[80px]">{assigneeName || task.assigneeId}</span>
-                  </div>
-                )}
-                {task.dueDate && !isOverdue && (
-                  <div className="flex items-center gap-0.5">
-                    <Calendar className="h-3 w-3" />
-                    <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                  </div>
-                )}
+                  {isOverdue && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                      <AlertTriangle className="h-2.5 w-2.5" />
+                      Overdue
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                  {task.assigneeId && (
+                    <div className="flex items-center gap-1">
+                      <Avatar className="h-4 w-4">
+                        <AvatarFallback className="text-[7px] bg-primary/10 text-primary">
+                          {assigneeName
+                            ? assigneeName.substring(0, 2).toUpperCase()
+                            : task.assigneeId.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate max-w-[80px]">{assigneeName || task.assigneeId}</span>
+                    </div>
+                  )}
+                  {task.dueDate && !isOverdue && (
+                    <div className="flex items-center gap-0.5">
+                      <Calendar className="h-3 w-3" />
+                      <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+          </CardContent>
+        </Card>
+      </Link>
+    </div>
   );
 }
 

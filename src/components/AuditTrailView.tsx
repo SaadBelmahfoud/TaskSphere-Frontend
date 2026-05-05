@@ -32,7 +32,7 @@ export default function AuditTrailView({ taskId }: AuditTrailViewProps) {
   if (activities.length === 0) {
     return (
       <div className="p-6 text-center text-muted-foreground text-sm">
-        No activity recorded for this task
+        No activity recorded yet. Actions like status changes, assignments, and comments will appear here.
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function AuditTrailView({ taskId }: AuditTrailViewProps) {
                 <p className="text-sm text-muted-foreground">{activity.description}</p>
 
                 {/* Field-level changes */}
-                {activity.changeDetails && activity.changeDetails.length > 0 && (
+                {Array.isArray(activity.changeDetails) && activity.changeDetails.length > 0 && (
                   <div className="mt-1.5 space-y-1">
                     {activity.changeDetails.map((change: ChangeDetail, ci: number) => (
                       <div key={ci} className="flex items-center gap-2 text-xs bg-muted/50 rounded px-2 py-1">

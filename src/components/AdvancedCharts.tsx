@@ -63,7 +63,7 @@ export default function AdvancedCharts() {
         <CardContent>
           {burndownLoading ? (
             <Skeleton className="h-[280px] w-full" />
-          ) : burndown && burndown.points.length > 0 ? (
+          ) : burndown?.points?.length ? (
             <ChartContainer config={burndownChartConfig} className="h-[280px] w-full">
               <LineChart data={burndown.points} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -113,7 +113,7 @@ export default function AdvancedCharts() {
             </CardTitle>
             <CardDescription>
               Tasks completed per week
-              {velocity && ` · Avg: ${velocity.averageVelocity.toFixed(1)}/week`}
+              {velocity?.averageVelocity ? ` · Avg: ${velocity.averageVelocity.toFixed(1)}/week` : ""}
             </CardDescription>
           </div>
           <Select value={velocityWeeks} onValueChange={setVelocityWeeks}>
@@ -131,7 +131,7 @@ export default function AdvancedCharts() {
         <CardContent>
           {velocityLoading ? (
             <Skeleton className="h-[280px] w-full" />
-          ) : velocity && velocity.points.length > 0 ? (
+          ) : velocity?.points?.length ? (
             <ChartContainer config={velocityChartConfig} className="h-[280px] w-full">
               <BarChart data={velocity.points} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
