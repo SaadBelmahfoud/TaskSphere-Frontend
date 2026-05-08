@@ -38,16 +38,16 @@ export function useNotifications() {
  * Fetches the count of unread notifications for the current user.
  * Automatically refetches every 30 seconds to keep the badge count fresh.
  *
- * @returns {UseQueryResult<{ count: number }>} Query result containing the unread count.
+ * @returns {UseQueryResult<{ unreadCount: number }>} Query result containing the unread count.
  *
  * @example
  * ```tsx
  * const { data } = useUnreadNotificationCount();
- * const unreadBadge = data?.count ?? 0;
+ * const unreadBadge = data?.unreadCount ?? 0;
  * ```
  */
 export function useUnreadNotificationCount() {
-  return useQuery<{ count: number }>({
+  return useQuery<{ unreadCount: number }>({
     queryKey: notificationKeys.unreadCount(),
     queryFn: async () => {
       const res = await api.get("/notifications/unread-count");

@@ -52,7 +52,7 @@ export default function NotificationBell() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   
-  const unreadCount = unreadData?.count || 0;
+  const unreadCount = unreadData?.unreadCount || 0;
 
   const handleMarkRead = (id: string, isRead: boolean) => {
     if (!isRead) {

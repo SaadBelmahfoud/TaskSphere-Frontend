@@ -130,9 +130,9 @@ export default function AttachmentUpload({ taskId }: AttachmentUploadProps) {
               >
                 <span className="text-lg">{getFileIcon(att.contentType)}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{att.originalFilename}</p>
+                  <p className="text-sm font-medium truncate">{att.fileName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatFileSize(att.fileSize)} · {att.uploadedBy} · {formatDistanceToNow(new Date(att.createdAt), { addSuffix: true })}
+                    {formatFileSize(att.fileSize)} · {att.uploadedBy} · {formatDistanceToNow(new Date(att.uploadedAt), { addSuffix: true })}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -140,7 +140,7 @@ export default function AttachmentUpload({ taskId }: AttachmentUploadProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => handleDownload(att.id, att.originalFilename)}
+                    onClick={() => handleDownload(att.id, att.fileName)}
                   >
                     <Download className="h-3.5 w-3.5" />
                   </Button>

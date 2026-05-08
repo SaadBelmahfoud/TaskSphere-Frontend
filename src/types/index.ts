@@ -190,6 +190,7 @@ export interface NotificationResponse {
   title: string;
   message: string;
   taskId: string | null;
+  taskTitle: string | null;
   actorUsername: string | null;
   targetUsername: string;
   read: boolean;
@@ -206,12 +207,11 @@ export interface TagCreateRequest {
 export interface AttachmentResponse {
   id: string;
   taskId: string;
-  originalFilename: string;
-  storedFilename: string;
+  fileName: string;
   contentType: string;
   fileSize: number;
   uploadedBy: string;
-  createdAt: string;
+  uploadedAt: string;
 }
 
 // ===== User / Admin =====

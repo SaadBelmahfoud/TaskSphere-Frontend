@@ -191,6 +191,13 @@ export default function KanbanPage() {
   const tasksByStatus = (status: TaskStatus) =>
     localTasks.filter((t) => t.status === status);
 
+  const findColumnForId = (id: string | number, tasks: TaskResponse[]): TaskStatus | null => {
+    const strId = String(id);
+    if (strId === "TODO" || strId === "DOING" || strId === "DONE") return strId as TaskStatus;
+    const task = tasks.find(t => t.id === strId);
+    return task ? (task.status as TaskStatus) : null;
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const task = localTasks.find((t) => t.id === String(event.active.id));
     if (task) setActiveTask(task);
@@ -201,7 +208,8 @@ export default function KanbanPage() {
     if (!over) return;
 
     const taskId = String(event.active.id);
-    const newStatus = over.id as TaskStatus;
+    const newStatus = findColumnForId(over.id, localTasks);
+    if (!newStatus) return;
 
     setPendingStatusChanges((prev) => {
       const next = new Map(prev);
@@ -217,7 +225,8 @@ export default function KanbanPage() {
     if (!over) return;
 
     const taskId = String(active.id);
-    const newStatus = over.id as TaskStatus;
+    const newStatus = findColumnForId(over.id, tasksData?.content ?? []);
+    if (!newStatus) return;
     const originalTask = tasksData?.content?.find((t) => t.id === taskId);
 
     if (originalTask && originalTask.status !== newStatus) {

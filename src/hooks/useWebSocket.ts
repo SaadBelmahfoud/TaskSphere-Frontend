@@ -8,6 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { notificationKeys } from "./useNotifications";
 import { toast } from "sonner";
 
+const BACKEND_WS_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+
 /**
  * WebSocket hook for real-time notifications via STOMP over SockJS.
  *
@@ -45,13 +47,13 @@ export function useWebSocket(username: string | null) {
     if (!username || stompClient.current?.active) return;
 
     const client = new Client({
-      webSocketFactory: () => new SockJS("/ws"),
+      webSocketFactory: () => new SockJS(`${BACKEND_WS_URL}/ws`),
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       onConnect: () => {
         setConnected(true);
-        client.subscribe(`/topic/notifications/${username}`, (message: IMessage) => {
+        client.subscribe(`/user/queue/notifications`, (message: IMessage) => {
           try {
             const notification: NotificationResponse = JSON.parse(message.body);
             setLastNotification(notification);
