@@ -47,10 +47,10 @@ interface TaskFormProps {
 }
 
 const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
-  LOW: { label: "Low", color: "bg-sky/10 text-sky" },
+  LOW: { label: "Low", color: "bg-teal/10 text-teal" },
   MEDIUM: { label: "Medium", color: "bg-amber/15 text-amber" },
   HIGH: { label: "High", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", color: "bg-coral/15 text-coral" },
+  CRITICAL: { label: "Critical", color: "bg-rose/15 text-rose" },
 };
 
 export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProps) {
@@ -94,12 +94,8 @@ export default function TaskForm({ task, onSubmit, loading, mode }: TaskFormProp
 
   const selectedUser = users?.find((u) => u.email === selectedAssigneeId);
 
-  const handleFormSubmit = (data: CreateTaskFormData | UpdateTaskFormData) => {
-    onSubmit({ ...data, tagIds: selectedTagIds });
-  };
-
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit((data) => onSubmit({ ...data, tagIds: selectedTagIds }))} className="space-y-5">
       {/* Title */}
       <div className="space-y-2">
         <Label htmlFor="title" className="text-sm font-medium">

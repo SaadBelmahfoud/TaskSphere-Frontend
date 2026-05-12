@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/providers/ThemeProvider";
+import { useTheme, type ColorTheme, COLOR_THEMES } from "@/providers/ThemeProvider";
 import TokenTimer from "./TokenTimer";
 import NotificationBell from "./NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import {
   LayoutDashboard,
@@ -27,14 +32,14 @@ import {
   Menu,
   X,
   User,
+  Palette,
+  Check,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 // Navigation links with role-based visibility
-// adminOnly: only ADMIN can see
-// managerAndAbove: MANAGER and ADMIN can see
-// (no restriction): all authenticated users can see
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
@@ -42,15 +47,23 @@ const navLinks = [
   { href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ] as const;
 
+// Color theme definitions for the dropdown
+const colorThemeOptions: { value: ColorTheme; label: string; color: string }[] = [
+  { value: "ocean", label: "Ocean", color: "oklch(0.42 0.11 168)" },
+  { value: "sunset", label: "Sunset", color: "oklch(0.52 0.14 65)" },
+  { value: "forest", label: "Forest", color: "oklch(0.45 0.12 150)" },
+  { value: "berry", label: "Berry", color: "oklch(0.50 0.16 345)" },
+  { value: "slate", label: "Slate", color: "oklch(0.38 0.04 260)" },
+];
+
 export default function Navbar() {
   const { auth, logout } = useAuth();
   const pathname = usePathname();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme, colorTheme, setColorTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!auth?.isAuthenticated) return null;
 
-  // Only ADMIN can see the Admin link
   const isAdmin = auth.role === "ADMIN";
   const roleLabel: Record<string, string> = {
     ADMIN: "Administrator",
@@ -105,17 +118,72 @@ export default function Navbar() {
           <NotificationBell />
           <TokenTimer />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="h-8 w-8"
-          >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
-          </Button>
+          {/* Theme Dropdown — combines Light/Dark + 5 Color Themes */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 relative">
+                <Palette className="h-4 w-4" />
+                {/* Active color indicator dot */}
+                <span
+                  className="absolute bottom-1 right-1 h-2 w-2 rounded-full ring-1 ring-background"
+                  style={{
+                    backgroundColor: colorThemeOptions.find(t => t.value === colorTheme)?.color || "oklch(0.42 0.11 168)"
+                  }}
+                />
+                <span className="sr-only">Theme settings</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {/* Light/Dark Mode Section */}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Mode</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => setTheme("light")}
+                className={cn("cursor-pointer", resolvedTheme === "light" && "bg-primary/5")}
+              >
+                <Sun className="mr-2 h-4 w-4" />
+                Light
+                {resolvedTheme === "light" && <Check className="ml-auto h-4 w-4 text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setTheme("dark")}
+                className={cn("cursor-pointer", resolvedTheme === "dark" && "bg-primary/5")}
+              >
+                <Moon className="mr-2 h-4 w-4" />
+                Dark
+                {resolvedTheme === "dark" && <Check className="ml-auto h-4 w-4 text-primary" />}
+              </DropdownMenuItem>
 
+              <DropdownMenuSeparator />
+
+              {/* Color Themes Section */}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Color Theme</DropdownMenuLabel>
+              {colorThemeOptions.map(({ value, label, color }) => (
+                <DropdownMenuItem
+                  key={value}
+                  onClick={() => setColorTheme(value)}
+                  className={cn("cursor-pointer", colorTheme === value && "bg-primary/5")}
+                >
+                  <span
+                    className="mr-2 h-4 w-4 rounded-full shrink-0 ring-1 ring-border"
+                    style={{ backgroundColor: color }}
+                  />
+                  {label}
+                  {colorTheme === value && <Check className="ml-auto h-4 w-4 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  More settings
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 gap-2 px-2 rounded-full hover:bg-muted">
@@ -146,6 +214,13 @@ export default function Navbar() {
                   </div>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer focus:bg-destructive/10 focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -190,6 +265,62 @@ export default function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Mobile: Quick theme toggle */}
+            <div className="flex items-center gap-2 px-3 py-2.5">
+              <span className="text-xs text-muted-foreground mr-1">Theme:</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              >
+                {resolvedTheme === "dark" ? <Sun className="mr-1 h-3 w-3" /> : <Moon className="mr-1 h-3 w-3" />}
+                {resolvedTheme === "dark" ? "Light" : "Dark"}
+              </Button>
+            </div>
+
+            {/* Mobile: Color themes row */}
+            <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto">
+              <span className="text-xs text-muted-foreground shrink-0">Color:</span>
+              {colorThemeOptions.map(({ value, label, color }) => (
+                <button
+                  key={value}
+                  onClick={() => setColorTheme(value)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all",
+                    colorTheme === value
+                      ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <span
+                    className="h-3 w-3 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile: Settings + Logout */}
+            <div className="border-t mt-1 pt-1">
+              <Link
+                href="/settings"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
+              <button
+                onClick={() => { setMobileOpen(false); logout(); }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full text-left"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </div>
           </nav>
         </div>
       )}

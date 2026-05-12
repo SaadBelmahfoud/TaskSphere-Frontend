@@ -20,7 +20,7 @@ export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
-  expiresIn: string;
+  expiresIn: number;
 }
 
 export interface AuthState {
@@ -79,7 +79,7 @@ export interface TaskStatusRequest {
 }
 
 export interface TaskAssignRequest {
-  assigneeId: string;
+  assigneeId: string | null;
 }
 
 export interface TaskPageResponse {
@@ -190,7 +190,6 @@ export interface NotificationResponse {
   title: string;
   message: string;
   taskId: string | null;
-  taskTitle: string | null;
   actorUsername: string | null;
   targetUsername: string;
   read: boolean;
@@ -207,11 +206,12 @@ export interface TagCreateRequest {
 export interface AttachmentResponse {
   id: string;
   taskId: string;
-  fileName: string;
+  originalFilename: string;
+  storedFilename: string;
   contentType: string;
   fileSize: number;
   uploadedBy: string;
-  uploadedAt: string;
+  createdAt: string;
 }
 
 // ===== User / Admin =====

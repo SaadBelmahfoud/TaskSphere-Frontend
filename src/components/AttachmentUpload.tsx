@@ -55,22 +55,21 @@ export default function AttachmentUpload({ taskId }: AttachmentUploadProps) {
 
   const handleDownload = async (attachmentId: string, filename: string) => {
     try {
-      const res = await fetch(`/api/v1/attachments/${attachmentId}/download`, {
-        headers: {
-          Authorization: `Bearer ${auth?.accessToken}`,
-        },
+      // FIX : Use axios api instance instead of raw fetch.
+      // The api instance includes the auth token interceptor and
+      // handles automatic token refresh on 401 responses.
+      const apiModule = await import("@/lib/api");
+      const api = apiModule.default;
+      const res = await api.get(`/attachments/${attachmentId}/download`, {
+        responseType: "blob",
       });
-      if (res.redirected) {
-        window.open(res.url, "_blank");
-      } else if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      const blob = res.data;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch {
       toast.error("Failed to download file");
     }
@@ -130,9 +129,9 @@ export default function AttachmentUpload({ taskId }: AttachmentUploadProps) {
               >
                 <span className="text-lg">{getFileIcon(att.contentType)}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{att.fileName}</p>
+                  <p className="text-sm font-medium truncate">{att.originalFilename}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatFileSize(att.fileSize)} · {att.uploadedBy} · {formatDistanceToNow(new Date(att.uploadedAt), { addSuffix: true })}
+                    {formatFileSize(att.fileSize)} · {att.uploadedBy} · {formatDistanceToNow(new Date(att.createdAt), { addSuffix: true })}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -140,7 +139,7 @@ export default function AttachmentUpload({ taskId }: AttachmentUploadProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => handleDownload(att.id, att.fileName)}
+                    onClick={() => handleDownload(att.id, att.originalFilename)}
                   >
                     <Download className="h-3.5 w-3.5" />
                   </Button>

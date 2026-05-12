@@ -2,7 +2,9 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "/api/v1",
-  headers: {},
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 // Request interceptor — attach Bearer token

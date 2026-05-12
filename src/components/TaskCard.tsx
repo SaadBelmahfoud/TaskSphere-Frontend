@@ -16,10 +16,10 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
-  LOW: { label: "Low", variant: "outline", color: "bg-sky/10 text-sky" },
+  LOW: { label: "Low", variant: "outline", color: "bg-teal/10 text-teal" },
   MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
   HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-coral/15 text-coral" },
+  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-rose/15 text-rose" },
 };
 
 interface TaskCardProps {

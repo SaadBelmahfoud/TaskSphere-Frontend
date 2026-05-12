@@ -58,7 +58,6 @@ export function useCreateTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task created successfully");
     },
     onError: () => {
@@ -78,7 +77,6 @@ export function useUpdateTask() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task updated successfully");
     },
     onError: () => {
@@ -115,7 +113,6 @@ export function useChangeTaskStatus() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["activities"] });
       toast.success("Task status updated");
     },
     onError: () => {
@@ -134,11 +131,12 @@ export function useAssignTask() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["tasks", variables.id] });
-      qc.invalidateQueries({ queryKey: ["activities"] });
-      toast.success("Task assigned successfully");
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      const isUnassign = variables.data.assigneeId === null || variables.data.assigneeId === "";
+      toast.success(isUnassign ? "Task unassigned successfully" : "Task assigned successfully");
     },
     onError: () => {
-      toast.error("Failed to assign task");
+      toast.error("Failed to update task assignment");
     },
   });
 }

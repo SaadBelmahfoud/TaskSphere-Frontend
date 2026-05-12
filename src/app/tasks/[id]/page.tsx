@@ -43,6 +43,7 @@ import {
   UserPlus,
   UserMinus,
   Loader2,
+  Tag,
   Calendar,
   Clock,
   CheckCircle2,
@@ -64,10 +65,10 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 const priorityConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
-  LOW: { label: "Low", variant: "outline", color: "bg-sky/10 text-sky" },
+  LOW: { label: "Low", variant: "outline", color: "bg-teal/10 text-teal" },
   MEDIUM: { label: "Medium", variant: "secondary", color: "bg-amber/15 text-amber" },
   HIGH: { label: "High", variant: "default", color: "bg-orange/15 text-orange" },
-  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-coral/15 text-coral" },
+  CRITICAL: { label: "Critical", variant: "destructive", color: "bg-rose/15 text-rose" },
 };
 
 export default function TaskDetailPage() {
@@ -127,7 +128,7 @@ export default function TaskDetailPage() {
   };
 
   const handleUnassign = () => {
-    assignTask.mutate({ id: taskId, data: { assigneeId: "" } });
+    assignTask.mutate({ id: taskId, data: { assigneeId: null } });
   };
 
   if (isLoading) {
@@ -280,6 +281,31 @@ export default function TaskDetailPage() {
                         {task.description || "No description"}
                       </p>
                     </div>
+                    {task.tags && task.tags.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Tags</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {task.tags.map((tag) => (
+                            <Badge
+                              key={tag.id}
+                              variant="outline"
+                              className="text-xs gap-1"
+                              style={{
+                                backgroundColor: tag.color + "15",
+                                color: tag.color,
+                                borderColor: tag.color + "30",
+                              }}
+                            >
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: tag.color }}
+                              />
+                              {tag.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
                         <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />

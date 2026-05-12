@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 export default function TokenTimer() {
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
   const [timeLeft, setTimeLeft] = useState("");
+  const hasLoggedOut = useRef(false);
 
   useEffect(() => {
     if (!auth?.tokenExpiry) return;
@@ -16,6 +17,11 @@ export default function TokenTimer() {
       if (remaining <= 0) {
         setTimeLeft("Expired");
         clearInterval(interval);
+        // Auto-logout when token expires
+        if (!hasLoggedOut.current) {
+          hasLoggedOut.current = true;
+          logout();
+        }
         return;
       }
       const minutes = Math.floor(remaining / 60000);
@@ -24,7 +30,7 @@ export default function TokenTimer() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [auth?.tokenExpiry]);
+  }, [auth?.tokenExpiry, logout]);
 
   if (!auth?.isAuthenticated) return null;
 

@@ -19,13 +19,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
-  useDraggable,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import { useDroppable } from "@dnd-kit/core";
 import Link from "next/link";
 import { GripVertical, Calendar, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,7 +31,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const COLUMNS: { status: TaskStatus; label: string; color: string; bgColor: string; headerColor: string }[] = [
   { status: "TODO", label: "To Do", color: "border-l-muted-foreground", bgColor: "bg-muted/30", headerColor: "text-muted-foreground" },
-  { status: "DOING", label: "In Progress", color: "border-l-sky", bgColor: "bg-muted/30", headerColor: "text-sky" },
+  { status: "DOING", label: "In Progress", color: "border-l-teal", bgColor: "bg-muted/30", headerColor: "text-teal" },
   { status: "DONE", label: "Done", color: "border-l-emerald", bgColor: "bg-muted/30", headerColor: "text-emerald" },
 ];
 
@@ -45,10 +43,10 @@ const priorityVariant: Record<string, "default" | "secondary" | "destructive" | 
 };
 
 const priorityColorClass: Record<string, string> = {
-  LOW: "bg-sky/10 text-sky",
+  LOW: "bg-teal/10 text-teal",
   MEDIUM: "bg-amber/15 text-amber",
   HIGH: "bg-orange/15 text-orange",
-  CRITICAL: "bg-coral/15 text-coral",
+  CRITICAL: "bg-rose/15 text-rose",
 };
 
 function DroppableColumn({
@@ -94,64 +92,71 @@ function DroppableColumn({
 
 function KanbanCard({ task, assigneeName }: { task: TaskResponse; assigneeName?: string }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: task.id });
-  const dragStyle = transform
-    ? { transform: CSS.Transform.toString(transform) }
-    : undefined;
 
   return (
-    <div ref={setNodeRef} style={dragStyle} className="group">
-      <Link href={`/tasks/${task.id}`}>
-        <Card className="hover:shadow-md transition-all duration-200 border-l-0 active:cursor-grabbing">
-          <CardContent className="p-3">
-            <div className="flex items-start gap-2">
-              <GripVertical
-                className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-0.5 group-hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                {...listeners}
-                {...attributes}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">{task.title}</p>
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  <Badge
-                    variant={priorityVariant[task.priority] || "outline"}
-                    className={cn("text-[10px] px-1.5 py-0", priorityColorClass[task.priority] || "")}
-                  >
-                    {task.priority}
+    <Link href={`/tasks/${task.id}`}>
+      <Card className="cursor-grab hover:shadow-md transition-all duration-200 border-l-0 active:cursor-grabbing group">
+        <CardContent className="p-3">
+          <div className="flex items-start gap-2">
+            <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-0.5 group-hover:text-muted-foreground transition-colors" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">{task.title}</p>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <Badge
+                  variant={priorityVariant[task.priority] || "outline"}
+                  className={cn("text-[10px] px-1.5 py-0", priorityColorClass[task.priority] || "")}
+                >
+                  {task.priority}
+                </Badge>
+                {isOverdue && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                    <AlertTriangle className="h-2.5 w-2.5" />
+                    Overdue
                   </Badge>
-                  {isOverdue && (
-                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
-                      <AlertTriangle className="h-2.5 w-2.5" />
-                      Overdue
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                  {task.assigneeId && (
-                    <div className="flex items-center gap-1">
-                      <Avatar className="h-4 w-4">
-                        <AvatarFallback className="text-[7px] bg-primary/10 text-primary">
-                          {assigneeName
-                            ? assigneeName.substring(0, 2).toUpperCase()
-                            : task.assigneeId.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate max-w-[80px]">{assigneeName || task.assigneeId}</span>
-                    </div>
-                  )}
-                  {task.dueDate && !isOverdue && (
-                    <div className="flex items-center gap-0.5">
-                      <Calendar className="h-3 w-3" />
-                      <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                </div>
+                )}
+                {task.tags && task.tags.slice(0, 2).map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    variant="outline"
+                    className="text-[10px] px-1.5 py-0"
+                    style={{
+                      backgroundColor: tag.color + "15",
+                      color: tag.color,
+                      borderColor: tag.color + "30",
+                    }}
+                  >
+                    {tag.name}
+                  </Badge>
+                ))}
+                {task.tags && task.tags.length > 2 && (
+                  <span className="text-[10px] text-muted-foreground">+{task.tags.length - 2}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                {task.assigneeId && (
+                  <div className="flex items-center gap-1">
+                    <Avatar className="h-4 w-4">
+                      <AvatarFallback className="text-[7px] bg-primary/10 text-primary">
+                        {assigneeName
+                          ? assigneeName.substring(0, 2).toUpperCase()
+                          : task.assigneeId.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate max-w-[80px]">{assigneeName || task.assigneeId}</span>
+                  </div>
+                )}
+                {task.dueDate && !isOverdue && (
+                  <div className="flex items-center gap-0.5">
+                    <Calendar className="h-3 w-3" />
+                    <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </Link>
-    </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -191,13 +196,6 @@ export default function KanbanPage() {
   const tasksByStatus = (status: TaskStatus) =>
     localTasks.filter((t) => t.status === status);
 
-  const findColumnForId = (id: string | number, tasks: TaskResponse[]): TaskStatus | null => {
-    const strId = String(id);
-    if (strId === "TODO" || strId === "DOING" || strId === "DONE") return strId as TaskStatus;
-    const task = tasks.find(t => t.id === strId);
-    return task ? (task.status as TaskStatus) : null;
-  };
-
   const handleDragStart = (event: DragStartEvent) => {
     const task = localTasks.find((t) => t.id === String(event.active.id));
     if (task) setActiveTask(task);
@@ -208,8 +206,7 @@ export default function KanbanPage() {
     if (!over) return;
 
     const taskId = String(event.active.id);
-    const newStatus = findColumnForId(over.id, localTasks);
-    if (!newStatus) return;
+    const newStatus = over.id as TaskStatus;
 
     setPendingStatusChanges((prev) => {
       const next = new Map(prev);
@@ -225,8 +222,7 @@ export default function KanbanPage() {
     if (!over) return;
 
     const taskId = String(active.id);
-    const newStatus = findColumnForId(over.id, tasksData?.content ?? []);
-    if (!newStatus) return;
+    const newStatus = over.id as TaskStatus;
     const originalTask = tasksData?.content?.find((t) => t.id === taskId);
 
     if (originalTask && originalTask.status !== newStatus) {

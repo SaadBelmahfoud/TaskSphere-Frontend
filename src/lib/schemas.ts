@@ -21,16 +21,16 @@ export const registerSchema = z
 
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
-  description: z.string().min(1, "Description is required"),
-  priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+  description: z.string().optional().default(""),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional().default("MEDIUM"),
   dueDate: z.string().optional(),
   assigneeId: z.string().optional(),
-  tagIds: z.array(z.string()).optional(),
+  tagIds: z.array(z.string()).optional().default([]),
 });
 
 export const updateTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long").optional(),
-  description: z.string().min(1, "Description is required").optional(),
+  description: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional(),
   dueDate: z.string().optional(),
   tagIds: z.array(z.string()).optional(),
